@@ -1,6 +1,10 @@
 #!/usr/bin/env python
+from __future__ import print_function
+from __future__ import division
+
 from unittest import TestCase
 
+import codecs
 import escode
 import struct
 import io
@@ -68,43 +72,43 @@ class TestInt(TestCase):
 
         idx = 0
         while idx < len(encoding):
-            output.write(encoding[idx])
-
-            if not ord(encoding[idx]):
-                extrax00count = 255 - ord(encoding[idx+1])
+            output.write(encoding[idx:idx+1])
+            if not encoding[idx]:
+                extrax00count = 255 - encoding[idx+1]
                 output.write(b'\x00'*(extrax00count))
                 idx += 1
 
             idx += 1
 
         output.seek(0)
-        return output.read(-1)
+        return bytearray(output.read(-1))
 
     def test_index_encoding_and_order(self):
-        zipped = map(lambda x: (x, escode.encode_index((x,))), self.nums)
+        zipped = [(x, escode.encode_index((x,))) for x in self.nums]
 
         for num, encoded in zipped:
-            enc = self._fillzeros(encoded)
-            encbytes = bytearray(enc)
-            itype = encbytes.pop(0)
+            encbytes = self._fillzeros(bytearray(encoded))
+            itype = encbytes[0]
+            encbytes = encbytes[1:]
 
             size = 4 if itype in (_ESCODE_TYPE_INT, _ESCODE_TYPE_UINT) else 8
             pad = size - len(encbytes)
-            encbytes.extend([0]*pad)
+            encbytes += b'\x00'*pad
+
             assert len(encbytes) == size, (len(encbytes), size, hex(num), num, encbytes)
 
             if itype == _ESCODE_TYPE_LONG:
-                encnum = struct.unpack('>q', str(encbytes))[0]
+                encnum = struct.unpack('>q', encbytes)[0]
             elif itype == _ESCODE_TYPE_INT:
                 encbytes[0] ^= 0x80
-                encnum = struct.unpack('>i', str(encbytes))[0]
+                encnum = struct.unpack('>i', encbytes)[0]
             elif itype == _ESCODE_TYPE_UINT:
-                encnum = struct.unpack('>I', str(encbytes))[0]
+                encnum = struct.unpack('>I', encbytes)[0]
             elif itype == _ESCODE_TYPE_ULONG:
-                encnum = struct.unpack('>Q', str(encbytes))[0]
+                encnum = struct.unpack('>Q', encbytes)[0]
 
             self.assertEqual(num, encnum)
 
-        numsorted = sorted(zipped, key=lambda (num,enc): num)
-        encsorted = sorted(zipped, key=lambda (num,enc): enc)
+        numsorted = sorted(zipped, key=lambda num_enc: num_enc[0])
+        encsorted = sorted(zipped, key=lambda num_enc: num_enc[1])
         self.assertEqual(numsorted, encsorted)

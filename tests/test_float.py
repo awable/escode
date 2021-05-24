@@ -27,7 +27,7 @@ class TestFloat(TestCase):
         self.assertEqual(decoded, self.floats)
 
     def test_index_order(self):
-        zipped = map(lambda x: (x, escode.encode_index((x,))), self.floats)
-        numsorted = sorted(zipped, key=lambda (num,enc): num)
-        encsorted = sorted(zipped, key=lambda (num,enc): enc)
+        zipped = [(f, escode.encode_index((f,))) for f in self.floats]
+        numsorted = sorted(zipped, key=lambda num_enc: num_enc[0])
+        encsorted = sorted(zipped, key=lambda num_enc: num_enc[1])
         self.assertEqual(numsorted, encsorted)

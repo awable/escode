@@ -12,7 +12,7 @@ class TestMulti(TestCase):
         nums = [random.randint(-0x0fffffffffffffff, 0x0fffffffffffffff) for x in range(20)]
         hexs = [hex(random.randint(-0x0fffffffffffffff, 0x0fffffffffffffff)) for x in range(20)]
         self.tuples = zip(nums, floats, hexs)
-        self.lists = map(list, self.tuples)
+        self.lists = [list(t) for t in self.tuples]
         self.dicts = dict(zip(hexs, self.lists))
 
         input_types = [
@@ -42,7 +42,7 @@ class TestMulti(TestCase):
         self.assertEqual(decoded, self.dicts)
 
     def test_index_order(self):
-        zipped = map(lambda x: (x, escode.encode_index(x)), self.tuples)
-        tupsorted = sorted(zipped, key=lambda (tup,enc): tup)
-        encsorted = sorted(zipped, key=lambda (tup,enc): enc)
+        zipped = [(t, escode.encode_index(t)) for t in self.tuples]
+        tupsorted = sorted(zipped, key=lambda tup_enc: tup_enc[0])
+        encsorted = sorted(zipped, key=lambda tup_enc: tup_enc[1])
         self.assertEqual(tupsorted, encsorted)
