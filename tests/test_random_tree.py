@@ -16,13 +16,13 @@ def populate(parent, howmany, max_children):
         children = randint(2, max_children)
         distribution = []
         for _ in xrange(0, children - 1):
-            distribution.append(int(howmany / children))
+            distribution.append(long(howmany / children))
         distribution.append(howmany - sum(distribution, 0))
         for i in xrange(0, children):
             steal_target = randint(0, children - 1)
             while steal_target == i:
                 steal_target = randint(0, children -1)
-            steal_count = int(randint(-1 * distribution[i],
+            steal_count = long(randint(-1 * distribution[i],
                     distribution[steal_target]) / 2)
             distribution[i] += steal_count
             distribution[steal_target] -= steal_count
