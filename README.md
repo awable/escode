@@ -3,7 +3,7 @@
 `escode` is a Python C-Extension which quickly serializes and deserializes arbitrary base types into binary data.
 The serialization has also been designed to be small. This is useful for storage and network applications. Finally,
 the module provides index serialization for a tuple of data - where the serialization maintains sorting order against
-all other tuples containing the same types in the same prder (or prefixes).
+all other tuples containing the same types in the same order (or prefixes).
 
 ```python
 import escode
