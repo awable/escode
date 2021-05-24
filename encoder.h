@@ -43,21 +43,13 @@ encode_object(PyObject *object, strbuf* buf) {
       strbuf_put_meta(buf, ESCODE_TYPE_BYTES, &len, /*index=*/0);
       strbuf_put_content(buf, str, len);
 
-    } else if (PyString_CheckExact(object)) {
-
-      byte* str = PyString_AS_STRING(object);
-      Py_ssize_t _len = PyString_GET_SIZE(object);
-      /*uint16_t len=*/assertLen(_len);
-      strbuf_put_meta(buf, ESCODE_TYPE_STRING, &len, /*index=*/0);
-      strbuf_put_content(buf, str, len);
-
     } else if (PyUnicode_CheckExact(object)) {
 
       PyObject* sobject = PyUnicode_AsUTF8String(object);
       if (sobject == NULL) { return 0; }
 
-      byte* str = PyString_AS_STRING(sobject);
-      Py_ssize_t _len = PyString_GET_SIZE(sobject);
+      byte* str = PyBytes_AS_STRING(sobject);
+      Py_ssize_t _len = PyBytes_GET_SIZE(sobject);
       /*uint16_t len=*/assertLen(_len);
       strbuf_put_meta(buf, ESCODE_TYPE_UNICODE, &len, /*index=*/0);
       strbuf_put_content(buf, str, len);

@@ -99,12 +99,12 @@ _strbuf_put_normal(strbuf* buf, const char* contents, uint32_t len) {
   if (!len || STRBUF_ISREADONLY(buf)) { return 0; }
 
   char* old_str = buf->str;
-  int required_size = buf->offset + len;
+  uint32_t required_size = buf->offset + len;
   if (required_size > buf->maxsize) { return 0; }
 
   // Ensure there is enough space in the buffer
   if (buf->size < required_size) {
-    int new_size = buf->size * 2;
+    uint32_t new_size = buf->size * 2;
     if (new_size < required_size) { new_size = required_size; }
 
     buf->str = (char*) realloc(buf->str, sizeof(char) * new_size);

@@ -65,7 +65,7 @@ ESCODE_encode_index(PyObject *self, PyObject *args)
     }
   }
 
-  PyObject* ret = PyString_FromStringAndSize(buf->str, buf->offset);
+  PyObject* ret = PyBytes_FromStringAndSize(buf->str, buf->offset);
 
   strbuf_free(buf);
   return ret;
@@ -87,7 +87,7 @@ ESCODE_encode(PyObject *self, PyObject *object)
     return NULL;
   }
 
-  PyObject* ret = PyString_FromStringAndSize(buf->str, buf->offset);
+  PyObject* ret = PyBytes_FromStringAndSize(buf->str, buf->offset);
 
   strbuf_free(buf);
   return ret;
@@ -99,12 +99,12 @@ ESCODE_encode(PyObject *self, PyObject *object)
 static PyObject*
 ESCODE_decode(PyObject *self, PyObject *object)
 {
-  if (!PyString_CheckExact(object)) {
+  if (!PyBytes_CheckExact(object)) {
     PyErr_SetString(ESCODE_DecodeError, "Can not decode non-string");
     return NULL;
   }
 
-  Py_ssize_t _len = PyString_GET_SIZE(object);
+  Py_ssize_t _len = PyBytes_GET_SIZE(object);
   if (!_len) Py_RETURN_NONE;
 
   if (_len > UINT16_MAX) {
@@ -113,7 +113,7 @@ ESCODE_decode(PyObject *self, PyObject *object)
   }
 
   strbuf* buf = strbuf_new((strbuf) {
-    .str=PyString_AS_STRING(object),
+    .str=PyBytes_AS_STRING(object),
     .size=(uint16_t)_len,
     .options=STRBUF_READONLY
   });
@@ -128,9 +128,31 @@ ESCODE_decode(PyObject *self, PyObject *object)
   return obj;
 }
 
+/*******************************************************************
+                     Python3+ Porting Stuff
+*******************************************************************/
+struct module_state {
+  PyObject *error;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state)
+static struct module_state _state;
+#endif
+
+static PyObject *
+error_out(PyObject *m) {
+  struct module_state *st = GETSTATE(m);
+  PyErr_SetString(st->error, "something bad happened");
+  return NULL;
+}
+
+/********************************************************************/
+
 
 /* List of functions defined in the module */
-
 static PyMethodDef escode_methods[] = {
     {"encode", (PyCFunction)ESCODE_encode,  METH_O,
      PyDoc_STR("encode(object) -> generate the ESCODE representation for object.")},
@@ -141,46 +163,87 @@ static PyMethodDef escode_methods[] = {
     {"encode_index", (PyCFunction)ESCODE_encode_index,  METH_VARARGS,
      PyDoc_STR("encode(object) -> generate the ESCODE index representation for object.")},
 
+    {"error_out", (PyCFunction)error_out, METH_NOARGS, NULL}, //Python3+
     {NULL, NULL}  // sentinel
 };
 
-PyDoc_STRVAR(module_doc,
-"ESCODE binary encoding encoder/decoder module."
-);
+PyDoc_STRVAR(module_doc, "ESCODE binary encoding encoder/decoder module.");
 
-/* Initialization function for the module (*must* be called initescode) */
 
+/*******************************************************************
+                     Python3+ Porting Stuff
+*******************************************************************/
+
+#if PY_MAJOR_VERSION >= 3
+static int myextension_traverse(PyObject *m, visitproc visit, void *arg) {
+  Py_VISIT(GETSTATE(m)->error);
+  return 0;
+}
+static int myextension_clear(PyObject *m) {
+  Py_CLEAR(GETSTATE(m)->error);
+  return 0;
+}
+static struct PyModuleDef moduledef = {
+  PyModuleDef_HEAD_INIT,
+  "escode",
+  module_doc,
+  sizeof(struct module_state),
+  escode_methods,
+  NULL,
+  myextension_traverse,
+  myextension_clear,
+  NULL
+};
+/********************************************************************/
+
+#define INITERROR return NULL
+#else
+#define INITERROR return
+#endif
+
+#if PY_MAJOR_VERSION >= 3
 PyMODINIT_FUNC
+PyInit_escode(void)
+#else
+void
 initescode(void)
+#endif
 {
-    PyObject *m;
-    PyDateTime_IMPORT;
+#if PY_MAJOR_VERSION >= 3
+  PyObject *m = PyModule_Create(&moduledef);
+#else
+  PyObject *m = Py_InitModule3("escode", escode_methods, module_doc);
+#endif
 
-    m = Py_InitModule3("escode", escode_methods, module_doc);
-    if (m == NULL)
-        return;
+  if (m == NULL) INITERROR;
 
-    ESCODE_Error = PyErr_NewException("on.Error", NULL, NULL);
-    if (ESCODE_Error == NULL) { return; }
-    Py_INCREF(ESCODE_Error);
-    PyModule_AddObject(m, "Error", ESCODE_Error);
+  PyDateTime_IMPORT;
 
-    ESCODE_EncodeError = PyErr_NewException("escode.EncodeError", ESCODE_Error, NULL);
-    if (ESCODE_EncodeError == NULL) { return; }
-    Py_INCREF(ESCODE_EncodeError);
-    PyModule_AddObject(m, "EncodeError", ESCODE_EncodeError);
 
-    ESCODE_DecodeError = PyErr_NewException("escode.DecodeError", ESCODE_Error, NULL);
-    if (ESCODE_DecodeError == NULL) { return; }
-    Py_INCREF(ESCODE_DecodeError);
-    PyModule_AddObject(m, "DecodeError", ESCODE_DecodeError);
+  ESCODE_Error = PyErr_NewException("on.Error", NULL, NULL);
+  if (ESCODE_Error == NULL) INITERROR;
+  Py_INCREF(ESCODE_Error);
+  PyModule_AddObject(m, "Error", ESCODE_Error);
 
-    ESCODE_UnsupportedError = PyErr_NewException("escode.UnsupportedTypeError", ESCODE_Error, NULL);
-    if (ESCODE_UnsupportedError == NULL) { return; }
-    Py_INCREF(ESCODE_UnsupportedError);
-    PyModule_AddObject(m, "UnsupportedTypeError", ESCODE_UnsupportedError);
+  ESCODE_EncodeError = PyErr_NewException("escode.EncodeError", ESCODE_Error, NULL);
+  if (ESCODE_EncodeError == NULL) INITERROR;
+  Py_INCREF(ESCODE_EncodeError);
+  PyModule_AddObject(m, "EncodeError", ESCODE_EncodeError);
 
-    // Module version (the MODULE_VERSION macro is defined by setup.py)
-    PyModule_AddStringConstant(m, "__version__", MODULE_VERSION);
+  ESCODE_DecodeError = PyErr_NewException("escode.DecodeError", ESCODE_Error, NULL);
+  if (ESCODE_DecodeError == NULL) INITERROR;
+  Py_INCREF(ESCODE_DecodeError);
+  PyModule_AddObject(m, "DecodeError", ESCODE_DecodeError);
 
+  ESCODE_UnsupportedError = PyErr_NewException("escode.UnsupportedTypeError", ESCODE_Error, NULL);
+  if (ESCODE_UnsupportedError == NULL) INITERROR;
+  Py_INCREF(ESCODE_UnsupportedError);
+  PyModule_AddObject(m, "UnsupportedTypeError", ESCODE_UnsupportedError);
+
+  // Module version (the MODULE_VERSION macro is defined by setup.py)
+  PyModule_AddStringConstant(m, "__version__", MODULE_VERSION);
+
+#if PY_MAJOR_VERSION >= 3
+  return m;
+#endif
 }

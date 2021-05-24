@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <datetime.h>
+#include <bytesobject.h>
 #include "strbuf.h"
 
 // The order int and bool types below must be like this
@@ -25,12 +26,11 @@
 #define _ESCODE_TYPE_UINT 6  //    1<<31 <= val < 1<<32
 #define _ESCODE_TYPE_ULONG 7 //    1<<32 <= val < 1<<64
 #define _ESCODE_TYPE_FLOAT 8
-#define _ESCODE_TYPE_STRING 9
+#define _ESCODE_TYPE_BYTES 9
 #define _ESCODE_TYPE_UNICODE 10
 #define _ESCODE_TYPE_LIST 11
 #define _ESCODE_TYPE_DICT 12
-#define _ESCODE_TYPE_BYTES 13
-#define _ESCODE_TYPE_DATETIME 14
+#define _ESCODE_TYPE_DATETIME 13
 
 static PyObject *ESCODE_Error;
 static PyObject *ESCODE_EncodeError;
@@ -47,11 +47,10 @@ static const byte ESCODE_TYPE_INT = _ESCODE_TYPE_INT;
 static const byte ESCODE_TYPE_UINT = _ESCODE_TYPE_UINT;
 static const byte ESCODE_TYPE_ULONG = _ESCODE_TYPE_ULONG;
 static const byte ESCODE_TYPE_FLOAT = _ESCODE_TYPE_FLOAT;
-static const byte ESCODE_TYPE_STRING = _ESCODE_TYPE_STRING;
+static const byte ESCODE_TYPE_BYTES = _ESCODE_TYPE_BYTES;
 static const byte ESCODE_TYPE_UNICODE = _ESCODE_TYPE_UNICODE;
 static const byte ESCODE_TYPE_LIST = _ESCODE_TYPE_LIST;
 static const byte ESCODE_TYPE_DICT = _ESCODE_TYPE_DICT;
-static const byte ESCODE_TYPE_BYTES = _ESCODE_TYPE_BYTES;
 static const byte ESCODE_TYPE_DATETIME = _ESCODE_TYPE_DATETIME;
 
 #define assertLen(_len)                                                 \
@@ -61,6 +60,11 @@ static const byte ESCODE_TYPE_DATETIME = _ESCODE_TYPE_DATETIME;
   }                                                                     \
   uint16_t len = (uint16_t)_len;                                        \
 
+#if PY_MAJOR_VERSION >= 3
+#define PyIntObject PyLongObject
+#define PyInt_Type PyLong_Type
+#define PyInt_CheckExact PyLong_CheckExact
+#endif
 
 /**************************************************************
                   NUMBER MANIPULATION

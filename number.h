@@ -24,7 +24,7 @@ encode_num(PyObject *object, strbuf* buf) {
 
   uint64_t u64 = 0;
 
-  if (PyInt_CheckExact(object) || PyLong_CheckExact(object)) {
+  if (PyLong_CheckExact(object) || PyInt_CheckExact(object)) {
     int overflow;
     int64_t i64 = PyLong_AsLongLongAndOverflow(object, &overflow);
     if (PyErr_Occurred()) { return 0; }

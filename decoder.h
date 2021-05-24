@@ -87,13 +87,6 @@ decode_object(strbuf *buf) {
     return PyBytes_FromStringAndSize(contents, *len);
   }
 
-  case _ESCODE_TYPE_STRING: {
-    uint16_t* len = strbuf_pull_type(buf, uint16_t);
-    if (len == NULL) { return NULL; }
-    const byte* contents = strbuf_pull(buf, *len);
-    return PyString_FromStringAndSize(contents, *len);
-  }
-
   case _ESCODE_TYPE_UNICODE: {
     uint16_t* len = strbuf_pull_type(buf, uint16_t);
     if (len == NULL) { return NULL; }
