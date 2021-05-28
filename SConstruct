@@ -4,6 +4,7 @@
 import enscons, enscons.cpyext
 import pytoml as toml
 import sys
+import site
 
 metadata = dict(toml.load(open("pyproject.toml")))["tool"]["enscons"]
 
@@ -34,16 +35,22 @@ env = Environment(
     TARGET_ARCH=TARGET_ARCH,
 )
 
-# usually adds ".so"
+# usually adds ".architechture_details.so"
 ext_filename = enscons.cpyext.extension_filename("escode")
+
+# Adds #define
+macros = {
+    "MODULE_VERSION": '\\"%s\\"' % metadata["version"],
+}
 
 extension = env.SharedLibrary(
     target=ext_filename,
     source=["escode.c"],
     LIBPREFIX="",
     SHLIBSUFFIX=SHLIBSUFFIX,
-    CPPPATH=env["CPPPATH"],
+    CPPPATH=["include"]+site.getsitepackages()+env["CPPPATH"],
     CPPFLAGS=["-std=c99"],
+    CPPDEFINES=macros
 )
 
 # Only *.py is included automatically by setup2toml.
@@ -54,10 +61,16 @@ lib = env.Whl("platlib" if HAS_NATIVE_CODE else "purelib", py_source+extension, 
 whl = env.WhlFile(lib)
 
 # Add automatic source files, plus any other needed files.
-sdist_source = FindSourceFiles() + ["PKG-INFO", "setup.py", "pyproject.toml"]
+sdist_source = list(
+    set(FindSourceFiles()
+        + ["PKG-INFO", "LICENSE", "setup.py", "__test__.py"]
+        + Glob("include/*")
+        + Glob("include/py3c/*")
+        + Glob("tests/*.py")
+    )
+)
 
 sdist = env.SDist(source=sdist_source)
-
 env.NoClean(sdist)
 env.Alias("sdist", sdist)
 

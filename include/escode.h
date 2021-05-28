@@ -23,8 +23,6 @@
 #include "constants.h"
 #include "strbuf.h"
 
-#define MODULE_VERSION "2.0.0"
-
 static PyObject *ESCODE_Error;
 static PyObject *ESCODE_EncodeError;
 static PyObject *ESCODE_DecodeError;
