@@ -1,0 +1,5 @@
+# Generates a bunch of random dictionaries of random sizes with random data. See generate.py
+#
+
+## for run in {1..100}; do ./benchmark.py >> trials; done
+## ./analyze.py

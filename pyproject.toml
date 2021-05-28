@@ -1,0 +1,25 @@
+[tool]
+
+[tool.enscons]
+name = "escode"
+version = "2.0.3"
+description = "ESCODE binary serialization"
+readme = "README.md"
+
+classifiers = [
+    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: C"
+]
+author = "Akhil Wable"
+author_email = "akhil.wable@gmail.com"
+url = "https://github.com/awable/escode"
+license = "MIT"
+install_requires = ["py3c", "six"]
+
+src_root = ""
+
+[build-system]
+requires = ["pytoml>=0.1", "enscons"]
+build-backend = "enscons.api"
