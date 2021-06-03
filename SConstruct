@@ -66,6 +66,7 @@ sdist_source = list(
         + ["PKG-INFO", "LICENSE", "setup.py", "__test__.py"]
         + Glob("include/*")
         + Glob("include/py3c/*")
+        + Glob("include/core/*")
         + Glob("tests/*.py")
     )
 )

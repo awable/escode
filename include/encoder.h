@@ -9,10 +9,10 @@
 #ifndef __ESCODE_ENCODER_H__
 #define __ESCODE_ENCODER_H__
 
-#include "mypython.h"
-#include "strbuf.h"
-#include "constants.h"
-#include "eshead.h"
+#include "core/mypython.h"
+#include "core/strbuf.h"
+#include "core/constants.h"
+#include "core/eshead.h"
 #include "escode.h"
 
 #define encode_assert(cond, str)                    \

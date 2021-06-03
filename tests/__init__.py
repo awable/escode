@@ -1,8 +1,13 @@
 #!/usr/bin/env python
+from __future__ import print_function
+from __future__ import division
+
 import os
 import sys
 import unittest
+import escode
 
+print (escode.__file__)
 
 def loadtestsuite():
     suite = unittest.TestSuite()

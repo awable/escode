@@ -9,8 +9,8 @@
 #include <Python.h>
 #include <datetime.h>
 #include <py3c/py3c.h>
+#include "include/core/strbuf.h"
 #include "include/escode.h"
-#include "include/strbuf.h"
 #include "include/encoder.h"
 #include "include/decoder.h"
 

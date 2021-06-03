@@ -9,9 +9,9 @@
 #ifndef __ESCODE_DECODER_H__
 #define __ESCODE_DECODER_H__
 
-#include "strbuf.h"
-#include "constants.h"
-#include "eshead.h"
+#include "core/strbuf.h"
+#include "core/constants.h"
+#include "core/eshead.h"
 #include "escode.h"
 
 PyObject*
