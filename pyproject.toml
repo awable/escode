@@ -2,7 +2,7 @@
 
 [tool.enscons]
 name = "escode"
-version = "2.0.6"
+version = "2.0.7"
 description = "ESCODE binary serialization"
 readme = "README.md"
 

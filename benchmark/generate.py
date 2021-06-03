@@ -2,62 +2,67 @@ from __future__ import print_function
 from __future__ import division
 
 from six.moves import xrange
+import six
 import random
 import string
 
-
-
-# GENERATE RANDOM BASIC TYPES
-basicfuncs = []
-
 def generate_tiny():
     return random.randint(-0x80,0x7F)
-basicfuncs.append(generate_tiny)
 
 def generate_small():
     return random.randint(-0x8000,0x7FFF)
-basicfuncs.append(generate_small)
 
 def generate_int():
     return random.randint(-0x80000000,0x7FFFFFFF)
-basicfuncs.append(generate_int)
 
 def generate_long():
     return random.randint(-0x8000000000000000,0x7FFFFFFFFFFFFFFF)
-basicfuncs.append(generate_long)
 
 letters = string.ascii_letters + string.digits + string.punctuation
-def generate_str():
-    return ''.join(random.sample(letters, random.randint(2,30)))
-basicfuncs.append(generate_str)
+def generate_str(minlen=1, maxlen=20):
+    slen = random.randint(minlen, maxlen)
+    return ''.join(random.choice(letters) for _ in xrange(slen))
+
+def generate_unicode(minlen=1, maxlen=100):
+    # Create a list of unicode characters within the range 0000-D7F
+    ulen = random.randint(minlen, maxlen)
+    return u"".join(six.unichr(random.randrange(0xD7FF)) for _ in xrange(ulen))
 
 def generate_bool():
     return bool(random.randint(0,2))
-basicfuncs.append(generate_bool)
 
 def generate_float():
     return float(generate_long())/generate_long()
+
+basicfuncs = []
+basicfuncs.append(generate_bool)
+basicfuncs.append(generate_tiny)
+basicfuncs.append(generate_small)
+basicfuncs.append(generate_int)
+basicfuncs.append(generate_long)
 basicfuncs.append(generate_float)
+basicfuncs.append(generate_str)
+basicfuncs.append(generate_unicode)
 
 
-# GENERATE RANDOM COLLECTIONS TYPES
+def generate_list(minlen=1, maxlen=10, fn=None):
+    size = random.randint(minlen, maxlen)
+    return [(fn or random.choice(basicfuncs))() for _ in xrange(size)]
+
+def generate_set(minlen=1, maxlen=10, fn=None):
+    return set(generate_list(minlen, maxlen))
+
+def generate_tuple(minlen=1, maxlen=10, fn=None):
+    return tuple(generate_list((minlen, maxlen)))
+
+
 collectiontypes = []
-
-def generate_list():
-    size = random.randint(2,100)
-    return [fn() for fn in (random.choice(basicfuncs) for _ in xrange(size))]
 collectiontypes.append(generate_list)
-
-# def generate_set():
-#     return set(generate_list())
 # collectiontypes.append(generate_set)
-
-# def generate_tuple():
-#     return tuple(generate_list())
 # collectiontypes.append(generate_tuple)
 
 # GENERATE RANDOM DICTS WITH BASIC KEYS AND ANY VALUES
 dictfuncs = basicfuncs + collectiontypes
-def generate_dict():
-    size = random.randint(3,30)
-    return {generate_str(): random.choice(dictfuncs)() for _ in xrange(size)}
+def generate_dict(minlen=5, maxlen=10, fn=None):
+    size = random.randint(minlen,maxlen)
+    return {generate_str(): (fn or random.choice(dictfuncs))() for _ in xrange(size)}

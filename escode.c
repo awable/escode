@@ -6,7 +6,11 @@
  *
  */
 
+#include <Python.h>
+#include <datetime.h>
+#include <py3c/py3c.h>
 #include "include/escode.h"
+#include "include/strbuf.h"
 #include "include/encoder.h"
 #include "include/decoder.h"
 
@@ -26,17 +30,13 @@ ESCODE_encode_index(PyObject *self, PyObject *args)
 
   EscodeWriter buf; //Allocate on the stack
   EscodeWriter*pbuf = &buf;
-
-  if (!EscodeWriter_init(pbuf, 256)) {
-    PyErr_SetString(ESCODE_EncodeError, "Error intializing index encode buffer");
-  }
+  EscodeWriter_init(pbuf, 256);
 
   buf.maxsize=ESINDEX_MAX;
-  buf.ops=WRITEROP_INDEX;
+  buf.ops=OP_STRBUFINDEX;
 
-
-  for (ESSIZE_T idx = 0; idx < _len; ++idx) {
-    idx && EscodeWriter_put_indexsep(pbuf);
+  for (Py_ssize_t idx = 0; idx < _len; ++idx) {
+    idx && EscodeWriter_write_indexsep(pbuf);
     if (!encode_object(PyTuple_GET_ITEM(object, idx), pbuf)) {
       EscodeWriter_free(pbuf);
       return NULL;
@@ -46,7 +46,7 @@ ESCODE_encode_index(PyObject *self, PyObject *args)
   if (pbuf->offset && inc) {
     byte* last = EscodeWriter_str(pbuf) + pbuf->offset - 1;
     if (+1 == inc) {
-      (*last != 0xFF) ? ++(*last) : EscodeWriter_put_indexsep(pbuf);
+      (*last != 0xFF) ? ++(*last) : EscodeWriter_write_indexsep(pbuf);
     } else if (-1 == inc) {
       (*last != 0x00) ? --(*last) : --(pbuf->offset);
     }
@@ -63,9 +63,7 @@ ESCODE_encode(PyObject *self, PyObject *object)
 
   EscodeWriter buf; //Allocate on the stack
   EscodeWriter*pbuf = &buf;
-  if (!EscodeWriter_init(pbuf, 256)) {
-    PyErr_SetString(ESCODE_EncodeError, "Error intializing encode buffer");
-  }
+  EscodeWriter_init(pbuf, 256);
 
   if (!encode_object(object, pbuf)) {
     EscodeWriter_free(pbuf);
@@ -82,7 +80,7 @@ static PyObject*
 ESCODE_decode(PyObject *self, PyObject *object)
 {
   if (!PyBytes_CheckExact(object)) {
-    PyErr_SetString(ESCODE_DecodeError, "Can not decode non-string");
+    PyErr_SetString(ESCODE_DecodeError, "Can not decode non-bytes");
     return NULL;
   }
 

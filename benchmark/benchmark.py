@@ -10,61 +10,58 @@
 from __future__ import print_function
 from __future__ import division
 
-from six.moves import xrange
+from six.moves import xrange, map
 from generate import *
+from initialize import *
+
 import time
-
-# encoder imports
-import escode
-import pickle
 import six
-import json
+import sys
+import os
 
+CHUNKSIZES = [1, 10, 100, 1000, 10000]
+NUMDICTS = max(CHUNKSIZES)
 
-NUMDICTS = 100
-dicts = [generate_dict() for i in xrange(NUMDICTS)]
-
-# Set up encoders based on PY2/PY3
-encoderfns = [
-    ('escode', escode.encode, {}, escode.decode),
-    ('pickle', pickle.dumps, {}, pickle.loads),
-    ('json', json.dumps, {}, json.loads),
-]
-if six.PY3:
-    encoderfns.append(('pickle4', pickle.dumps, dict(protocol=4), pickle.loads))
-else:
-    import cjson
-    encoderfns.append(('pickle2', pickle.dumps, dict(protocol=2), pickle.loads))
-    encoderfns.append(('cjson', cjson.encode, {}, cjson.decode))
-
+OUTFILENAME = sys.argv[1] if len(sys.argv) > 1 else 'TRIALS'
+print('# Writing trial data to file: %s' % OUTFILENAME)
 
 # Shuffle the order we test them in
-random.shuffle(encoderfns)
+random.shuffle(ENCODERS)
+#print ('# Testing: ', ', '.join(e[0] for e in ENCODERS))
 
-for encname, encfn, kwargs, decfn in encoderfns:
-    # Make sure they actually work (JSON fails this)
-    for d in dicts:
-        assert d == decfn(encfn(d, **kwargs)), encfn.__module__
+#print ("# Generating %d data objects..." % NUMDICTS)
+dicts = [generate_dict() for i in xrange(NUMDICTS)]
+#print ("# done.")
 
-    # Encode
-    s = time.time()
-    for d in dicts:
-        enc = encfn(d, **kwargs)
-    wt = time.time() - s
+with open(OUTFILENAME, "w") as out:
+    for encname, encfn, enckwargs, decfn, deckwargs in ENCODERS:
+        for chunksize in CHUNKSIZES:
+            chunks = [dicts[idx:idx+chunksize] for idx in xrange(0, NUMDICTS, chunksize)]
 
-    # Encode + Decode
-    s = time.time()
-    for d in dicts:
-        decfn(encfn(d, **kwargs))
-    rt = time.time() - s
+            # ENCODING
+            s = time.process_time_ns()
+            for chunk in chunks:
+                enc = encfn(chunk, **enckwargs)
+            wt = time.process_time_ns() - s
 
-    # Size
-    le = 0
-    for d in dicts:
-        le += len(encfn(d, **kwargs))
+            # ENCODING + DECODING
+            s = time.process_time_ns()
+            for chunk in chunks:
+                decfn(encfn(chunk, **enckwargs), **deckwargs)
+            rt = time.process_time_ns() - s
 
-    print (','.join((
-        encname,
-        str((wt*1e9)/NUMDICTS),
-        str(((rt-wt)*1e9)/NUMDICTS),
-        str(float(le)/NUMDICTS))))
+            le = 0
+            if chunksize == max(CHUNKSIZES):
+                le = float(len(enc))/chunksize
+
+            output = TrialRow(
+                module=encname,
+                numdicts=NUMDICTS,
+                chunksize=chunksize,
+                encode=wt/NUMDICTS,
+                decode=(rt-wt)/NUMDICTS,
+                encodingsize=le,
+            )
+
+            out.write(','.join(map(str, output)))
+            out.write('\n')

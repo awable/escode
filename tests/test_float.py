@@ -22,6 +22,10 @@ class TestFloat(TestCase):
 
 
     def test_float(self):
+        for flt in self.floats:
+            enc = escode.encode(flt)
+            self.assertEqual(flt, escode.decode(enc))
+
         dump = escode.encode(self.floats)
         decoded = escode.decode(dump)
         self.assertEqual(decoded, self.floats)
