@@ -87,7 +87,7 @@ decode_object(EscodeReader* buf) {
     PyObject *obj;
 
     if (isdict) {
-      obj = PyDict_New(); assert(obj);
+      obj = _PyDict_NewPresized(eshead->val.u64); assert(obj);
       for (uint64_t idx = 0; idx < eshead->val.u64; ++idx) {
         PyObject* key = decode_object(buf);
         PyObject* val = decode_object(buf);

@@ -104,7 +104,7 @@ typedef struct eshead_t {
 #define _NUMOFFSET(bytes, pos)                      \
   ({uint8_t off = 0;                                \
     byte skip = ((byte)(0-!(pos)));                 \
-    while(off < 7 && bytes[off] == skip) {++off;}   \
+    for(;off < 7 && bytes[off] == skip; off++);     \
     off;})
 
 
