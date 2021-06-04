@@ -9,17 +9,20 @@
 #ifndef __ESCODE_ENCODER_H__
 #define __ESCODE_ENCODER_H__
 
+#include <string.h>
 #include "core/mypython.h"
 #include "core/strbuf.h"
 #include "core/constants.h"
 #include "core/eshead.h"
 #include "escode.h"
 
-#define encode_assert(cond, str)                    \
+#define enc_assert(cond) if(!(cond)) { return 0; }
+#define enc_assert_err(cond, str)                   \
   if (!(cond)) {                                    \
     PyErr_SetString(ESCODE_EncodeError, str);       \
     return 0;                                       \
   }
+
 
 int
 encode_object(PyObject *object, EscodeWriter* buf) {
@@ -48,7 +51,7 @@ encode_object(PyObject *object, EscodeWriter* buf) {
     int32_t ofl;
     eshead->val.i64 = PyLong_AsLongLongAndOverflow(object, &ofl);
     if (ofl > 0) { eshead->val.u64 = PyLong_AsUnsignedLongLong(object); }
-    encode_assert(ofl>=0 && !PyErr_Occurred(), "Number out of bounds");
+    enc_assert_err(ofl>=0 && !PyErr_Occurred(), "Number out of bounds");
     bool pos = (ofl || eshead->val.i64 >= 0);
     ESHEAD_ENCODEINT(eshead, ESTYPE_INT, pos);
     EscodeWriter_write_head(buf, eshead, payload, 0);
@@ -66,7 +69,7 @@ encode_object(PyObject *object, EscodeWriter* buf) {
 
   } else if (PyUnicode_CheckExact(object)) {
     PyObject* bobject = PyUnicode_AsUTF8String(object);
-    encode_assert(bobject, "Error converting Unicode to UTF8");
+    enc_assert_err(bobject, "Error converting Unicode to UTF8");
 
     eshead->val.u64 = PyBytes_GET_SIZE(bobject);
     ESHEAD_ENCODELEN(eshead, ESTYPE_STRING, 1);
@@ -79,13 +82,12 @@ encode_object(PyObject *object, EscodeWriter* buf) {
     PyErr_SetString(ESCODE_UnsupportedError, Py_TYPE(object)->tp_name);
     return 0;
 
-
   } else if(PyList_CheckExact(object)) {
     eshead->val.u64 = PyList_GET_SIZE(object);
     ESHEAD_ENCODELEN(eshead, ESTYPE_LIST, 0);
     EscodeWriter_write_head(buf, eshead, payload, eshead->val.u64);
     for (uint64_t idx = 0; idx < eshead->val.u64; ++idx) {
-      if (!encode_object(PyList_GET_ITEM(object, idx), buf)) { return 0; }
+      enc_assert(encode_object(PyList_GET_ITEM(object, idx), buf));
     }
 
 
@@ -94,7 +96,7 @@ encode_object(PyObject *object, EscodeWriter* buf) {
     ESHEAD_ENCODELEN(eshead, ESTYPE_LIST, 1);
     EscodeWriter_write_head(buf, eshead, payload, eshead->val.u64);
     for (uint64_t idx = 0; idx < eshead->val.u64; ++idx) {
-      if (!encode_object(PyTuple_GET_ITEM(object, idx), buf)) { return 0; }
+      enc_assert(encode_object(PyTuple_GET_ITEM(object, idx), buf));
     }
 
 
@@ -106,7 +108,7 @@ encode_object(PyObject *object, EscodeWriter* buf) {
     Py_ssize_t pos = 0;
     long hash;
     while (_PySet_NextEntry(object, &pos, &item, &hash)) {
-      if (!encode_object(item, buf)) { return 0; }
+      enc_assert(encode_object(item, buf));
     }
 
 
@@ -117,10 +119,9 @@ encode_object(PyObject *object, EscodeWriter* buf) {
     PyObject *key, *value;
     Py_ssize_t pos = 0;
     while (PyDict_Next(object, &pos, &key, &value)) {
-      if (!encode_object(key, buf)) { return 0; }
-      if (!encode_object(value, buf)) { return 0; }
+      enc_assert(encode_object(key, buf));
+      enc_assert(encode_object(value, buf));
     }
-
 
   } else {
     PyErr_SetString(ESCODE_UnsupportedError, Py_TYPE(object)->tp_name);

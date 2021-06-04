@@ -16,13 +16,14 @@
 
 PyObject*
 decode_object(EscodeReader* buf) {
+
   eshead_t _eshead; // Allocate on stack
   eshead_t* eshead = &_eshead;
 
-  const byte* bytes;
-
   bool headbyte = EscodeReader_readtype(buf, bool);
   ESHEAD_INITDECODE(eshead, headbyte);
+
+  const byte* bytes;
 
   switch (ESHEAD_GETTYPE(eshead)) {
 

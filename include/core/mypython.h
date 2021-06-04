@@ -29,3 +29,10 @@
 #ifndef PyDict_GET_SIZE
 #define PyDict_GET_SIZE(mp)  (assert(PyDict_Check(mp)),((PyDictObject *)mp)->ma_used)
 #endif
+
+
+#ifndef PyDec_CheckExact
+#define PyDec_CheckExact(v) \
+  ((!strcmp(Py_TYPE(v)->tp_name, "decimal.Decimal")) || \
+   !strcmp(Py_TYPE(v)->tp_name, "Decimal"))
+#endif

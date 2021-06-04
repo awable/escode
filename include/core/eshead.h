@@ -67,7 +67,7 @@ typedef struct eshead_t {
 
 #define ESHEAD_ENCODELEN(eshead, type, bit)                             \
   ({_ESHEAD_ENCODENUM(eshead, type, 1);                                 \
-    ESHEAD_SETINFO(eshead, type, _LENINFO(bit, (eshead)->enc.width));   \
+    ESHEAD_SETINFO(eshead, type, _WIDTHINFO(bit, (eshead)->enc.width)); \
     eshead;})
 
 #define _ESHEAD_ENCODENUM(eshead, type, pos)                            \
@@ -77,24 +77,24 @@ typedef struct eshead_t {
     (eshead)->ops = OP_ESHASNUM;                                        \
     eshead;})
 
-// Floats are similar to Sign Represented Ints with MSB sign and an abs value
-// Reverse MSB so that +ve is 1 and -ve is 0. Flip the magnitude for -ve numbers
-// because lower abs value means a higher number
+// Floats are similar to Sign Represented Ints with MSB sign and an abs
+// value. Reverse MSB so that +ve is 1 and -ve is 0. Flip the abs value
+// for -ve numbers because lower abs value means a higher number
 #define ESHEAD_ENCODEFLOAT(eshead, type)                                \
   ({(eshead)->enc.num.b64 = htonll(SINT64UINT((eshead)->val.u64));      \
     (eshead)->enc.width = sizeof(double);                               \
     (eshead)->enc.off = 0;                                              \
     (eshead)->ops = OP_ESHASNUM | OP_ESINDEXNUM;                        \
-    ESHEAD_SETINFO(eshead, type, sizeof(double)-1);                     \
+    bool _pos = !((eshead)->val.u64 >> 63);                             \
+    ESHEAD_SETINFO(eshead, type, _WIDTHINFO(_pos, sizeof(double)));     \
     eshead;})
-
 
 #define ESHEAD_SETINFO(eshead, type, info)                              \
   ({(eshead)->headbyte = ((byte)(((type) << 4) | ((info) & 0x0F)));     \
     eshead;})
 
 // width-1 = 0 -> 7 = 0000 -> 0111
-#define _LENINFO(bit, width) (((!!(bit)) << 3) | ((width)-1))
+#define _WIDTHINFO(bit, width) (((!!(bit)) << 3) | ((width)-1))
 
 // width-1 = 0 -> 7 = 0000 -> 0111. upper bit is 0.
 // +ve xor mask = 8-!1 = 8-0 = 8 = 1000 which keeps bottom 3, sets bit to 1
