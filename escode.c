@@ -31,7 +31,6 @@ ESCODE_encode_index(PyObject *self, PyObject *args)
   EscodeWriter buf; //Allocate on the stack
   EscodeWriter*pbuf = &buf;
   EscodeWriter_init(pbuf, 256);
-
   buf.maxsize=ESINDEX_MAX;
   buf.ops=OP_STRBUFINDEX;
 

@@ -113,8 +113,7 @@ decode_object(EscodeReader* buf) {
   }
   }}
 
-  printf("Unrecognized type %02x", headbyte);
-  PyErr_SetString(ESCODE_EncodeError, "Unrecognized type found: possibly corrupted string");
+  PyErr_Format(ESCODE_DecodeError, "Unrecognized type in headbyte: %02x", headbyte);
   return NULL;
 }
 

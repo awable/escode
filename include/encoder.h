@@ -66,13 +66,13 @@ encode_object(PyObject *object, EscodeWriter* buf) {
 
   } else if (PyUnicode_CheckExact(object)) {
     PyObject* bobject = PyUnicode_AsUTF8String(object);
-    assert(bobject);
+    encode_assert(bobject, "Error converting Unicode to UTF8");
 
     eshead->val.u64 = PyBytes_GET_SIZE(bobject);
     ESHEAD_ENCODELEN(eshead, ESTYPE_STRING, 1);
     payload = (byte*)PyBytes_AS_STRING(bobject);
-    Py_DECREF(bobject);
     EscodeWriter_write_head(buf, eshead, payload, eshead->val.u64);
+    Py_DECREF(bobject);
 
   } else if (buf->ops & OP_STRBUFINDEX) {
     // Indexable types end here
