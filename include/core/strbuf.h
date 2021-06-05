@@ -26,10 +26,10 @@ typedef struct EscodeReader {
 } EscodeReader;
 
 
-#define EscodeReader_read(buf, len)                             \
-  ({assert(len && buf->size >= buf->offset + len);              \
-    const byte* _bytes = buf->str + buf->offset;                \
-    buf->offset += len;                                         \
+#define EscodeReader_read(buf, len)                                 \
+  ({assert(len && (buf)->size >= (buf)->offset + len);              \
+    const byte* _bytes = (buf)->str + (buf)->offset;                \
+    (buf)->offset += len;                                           \
     _bytes;})
 
 #define EscodeReader_readtype(buf, type)            \
@@ -50,30 +50,30 @@ typedef struct EscodeWriter {
 
 #define OP_STRBUFINDEX 0x01
 
-#define EscodeWriter_init(buf, len)                     \
-  ({memset(buf, 0, offsetof(EscodeWriter, _stackstr));  \
-    buf->size = sizeof(buf->_stackstr);                 \
-    buf->maxsize = UINT32_MAX;                          \
-                                                        \
-    if (len > buf->size) {                              \
-      buf->size = len;                                  \
-      buf->_str = (byte*)malloc(sizeof(byte) * len);    \
-      assert(buf->_str);                                \
+#define EscodeWriter_init(buf, len)                         \
+  ({memset(buf, 0, offsetof(EscodeWriter, _stackstr));      \
+    (buf)->size = sizeof((buf)->_stackstr);                 \
+    (buf)->maxsize = UINT32_MAX;                            \
+                                                            \
+    if (len > (buf)->size) {                                \
+      (buf)->size = len;                                    \
+      (buf)->_str = (byte*)malloc(sizeof(byte) * len);      \
+      assert((buf)->_str);                                  \
     }})
 
 #define EscodeWriter_free(buf)                                          \
-  if (buf->_str) { free(buf->_str); buf->_str == NULL;}                 \
+  if ((buf)->_str) { free((buf)->_str); (buf)->_str == NULL;}           \
 
 
 #define EscodeWriter_finish(buf, cb)                                    \
   ({byte* _str = EscodeWriter_str(buf);                                 \
-    void* _obj = cb((char*)_str, buf->offset);                          \
+    void* _obj = cb((char*)_str, (buf)->offset);                        \
     EscodeWriter_free(buf);                                             \
     _obj;})
 
 
 #define EscodeWriter_str(buf)                                           \
-  (buf->size > sizeof(buf->_stackstr) ? buf->_str : buf->_stackstr)
+  ((buf)->size > sizeof((buf)->_stackstr) ? (buf)->_str : (buf)->_stackstr)
 
 
 /**************************************************************
@@ -87,31 +87,34 @@ typedef struct EscodeWriter {
  */
 
 #define _EscodeWriter_resize(buf, _newsize)                             \
-  ({if (!buf->_str) {                                                   \
+  ({if (!(buf)->_str) {                                                 \
       /* Moving from _stackstr to allocated _str */                     \
-      buf->_str = (byte*)malloc(sizeof(byte) * _newsize);               \
-      assert(buf->_str);                                                \
-      memcpy(buf->_str, buf->_stackstr, sizeof(byte) * buf->offset);    \
+      (buf)->_str = (byte*)malloc(sizeof(byte) * _newsize);             \
+      assert((buf)->_str);                                              \
+      memcpy((buf)->_str, (buf)->_stackstr, sizeof(byte) * (buf)->offset); \
     } else {                                                            \
       /* Reallocating to new size (can be smaller) */                   \
-      buf->_str = (byte*)realloc(buf->_str, sizeof(byte) * _newsize);   \
-      assert(buf->_str);                                                \
+      (buf)->_str = (byte*)realloc((buf)->_str, sizeof(byte) * _newsize); \
+      assert((buf)->_str);                                              \
     }                                                                   \
-    buf->size = _newsize;                                               \
-    buf->_str;})
+    (buf)->size = _newsize;                                             \
+    (buf)->_str;})
 
 /**
  * Check whether there is enough space in the buffer. If not, calculate
  * a new size based on limits defined and call _EscodeWriter_resize
  */
 #define _EscodeWriter_prepare(buf, len)                                 \
-  ({uint32_t _requiredsize = buf->offset + len;                         \
-    assert(_requiredsize <= buf->maxsize);                              \
+  ({uint32_t _requiredsize = (buf)->offset + len;                       \
+    assert(_requiredsize <= (buf)->maxsize);                            \
                                                                         \
-    if (buf->size < _requiredsize) {                                    \
-      uint32_t _newsize = buf->size * 2;                                \
-      if (_newsize < _requiredsize) { _newsize = _requiredsize; }       \
-      else if (_newsize > buf->maxsize) { _newsize = buf->maxsize; }    \
+    if ((buf)->size < _requiredsize) {                                  \
+      uint32_t _newsize = (buf)->size * 2;                              \
+      if (_newsize < _requiredsize) {                                   \
+        _newsize = _requiredsize; }                                     \
+      else if (_newsize > (buf)->maxsize) {                             \
+        _newsize = (buf)->maxsize;                                      \
+      }                                                                 \
       _EscodeWriter_resize(buf, _newsize);                              \
     }                                                                   \
     EscodeWriter_str(buf);})
@@ -120,8 +123,8 @@ typedef struct EscodeWriter {
 #define _EscodeWriter_write(buf, contents, len)                         \
   ({if (len && contents) {                                              \
       byte* _str = _EscodeWriter_prepare(buf, len);                     \
-      memcpy(_str + buf->offset, contents, len);                        \
-      buf->offset += len;                                               \
+      memcpy(_str + (buf)->offset, contents, len);                      \
+      (buf)->offset += len;                                             \
     }                                                                   \
     1;})                                                                \
 
@@ -155,12 +158,12 @@ typedef struct EscodeWriter {
         if (_x00count) {                                                \
           _str = _EscodeWriter_prepare(buf, 2);                         \
           _x00count = ~_x00count + 1;                                   \
-          _str[buf->offset++] = 0x00;                                   \
-          _str[buf->offset++] = _x00count;                              \
+          _str[(buf)->offset++] = 0x00;                                 \
+          _str[(buf)->offset++] = _x00count;                            \
           --_idx; /* Back to non-\x00 byte or the UINT8_MAX-th \x00*/   \
         } else {                                                        \
           _str = _EscodeWriter_prepare(buf, 1);                         \
-          _str[buf->offset++] = contents[_idx];                         \
+          _str[(buf)->offset++] = contents[_idx];                       \
         }                                                               \
       }                                                                 \
     }                                                                   \
@@ -172,7 +175,7 @@ typedef struct EscodeWriter {
 
 
 #define EscodeWriter_write_head(buf, eshead, esbytes, esbyteslen)       \
-  ({bool index = buf->ops & OP_STRBUFINDEX;                             \
+  ({bool index = (buf)->ops & OP_STRBUFINDEX;                           \
     if (!index || (eshead)->ops & OP_ESINDEXHEAD) {                     \
       _EscodeWriter_write(buf, &((eshead)->headbyte), sizeof(byte));    \
     }                                                                   \
