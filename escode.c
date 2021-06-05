@@ -38,6 +38,9 @@ ESCODE_encode_index(PyObject *self, PyObject *args)
     idx && EscodeWriter_write(pbuf, ESINDEX_SEP, ESINDEX_SEPLEN);
     if (!encode_object(PyTuple_GET_ITEM(object, idx), pbuf)) {
       EscodeWriter_free(pbuf);
+      if (!PyErr_Occurred()) {
+        PyErr_SetString(ESCODE_EncodeError, "Error while encoding index");
+      }
       return NULL;
     }
   }
@@ -66,6 +69,9 @@ ESCODE_encode(PyObject *self, PyObject *object)
 
   if (!encode_object(object, pbuf)) {
     EscodeWriter_free(pbuf);
+    if (!PyErr_Occurred()) {
+      PyErr_SetString(ESCODE_EncodeError, "Error while encoding");
+    }
     return NULL;
   }
 
@@ -96,8 +102,7 @@ ESCODE_decode(PyObject *self, PyObject *object)
     .size=(uint32_t)_len,
   };
 
-  PyObject *obj = decode_object(&buf);
-  return obj;
+  return decode_object(&buf);
 }
 
 
