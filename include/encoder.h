@@ -56,6 +56,16 @@ encode_object(PyObject *object, EscodeWriter* buf) {
     ESHEAD_ENCODEINT(eshead, ESTYPE_INT, pos);
     EscodeWriter_write_head(buf, eshead, payload, 0);
 
+  } else if (PyDec_CheckExact(object)) {
+    PyObject *exp = PyObject_CallMethod(object, "adjusted", NULL);
+    PyObject *neg = PyObject_CallMethod(object, "is_signed", NULL);
+    enc_assert(!PyErr_Occurred());
+    bool ispos = (neg == Py_False);
+    eshead->val.i64 = PyLong_AsLongLong(exp);
+    ESHEAD_ENCODEEXP(eshead, ESTYPE_DEC, ispos);
+    EscodeWriter_write_head(buf, eshead, payload, 0);
+    Py_DECREF(exp); Py_DECREF(neg);
+
   } else if (PyFloat_CheckExact(object)) {
     eshead->val.flt = PyFloat_AS_DOUBLE(object);
     ESHEAD_ENCODEFLOAT(eshead, ESTYPE_FLOAT);

@@ -33,11 +33,24 @@ decode_object(EscodeReader* buf) {
     if (ESHEAD_GETBOOL(eshead)) Py_RETURN_TRUE; Py_RETURN_FALSE;
 
   case ESTYPE_INT: {
-    bytes = EscodeReader_read(buf, ESHEAD_GETINTWIDTH(eshead));
-    bool ispos = ESHEAD_DECODEINT(eshead, bytes);
+    bool ispos = ESHEAD_GETBIT(eshead);
+    bytes = EscodeReader_read(buf, ESHEAD_GETNUMWIDTH(eshead, ispos));
+    ESHEAD_DECODEINT(eshead, bytes);
     return (ispos ?
             PyLong_FromUnsignedLongLong(eshead->val.u64) :
             PyLong_FromLongLong(eshead->val.i64));
+
+  case ESTYPE_DEC: {
+    bool epos = ESHEAD_GETEXPBIT(eshead);
+    bytes = EscodeReader_read(buf, ESHEAD_GETEXPWIDTH(eshead, epos));
+    bool pos = ESHEAD_DECODEEXP(eshead, bytes);
+    char repr[50]; sprintf(repr, "%c1e%lld", (pos ? '+':'-'), eshead->val.i64);
+    //printf("%s\n", repr);
+    PyObject* mod = PyImport_ImportModule("decimal"); assert(mod);
+    PyObject* obj = PyObject_CallMethod(mod, "Decimal", "s", repr); assert(object);
+    Py_DECREF(mod);
+    return obj;
+  }
 
   case ESTYPE_FLOAT: {
     bytes = EscodeReader_read(buf, sizeof(double));
@@ -46,7 +59,7 @@ decode_object(EscodeReader* buf) {
   }
 
   case ESTYPE_STRING: {
-    bytes = EscodeReader_read(buf, ESHEAD_GETWIDTH(eshead));
+    bytes = EscodeReader_read(buf, ESHEAD_GETNUMWIDTH(eshead, 1));
     bool isunicode = ESHEAD_DECODELEN(eshead, bytes);
     const byte* contents = EscodeReader_read(buf, eshead->val.u64);
     return (isunicode ?
@@ -55,7 +68,7 @@ decode_object(EscodeReader* buf) {
   }
 
   case ESTYPE_LIST: {
-    bytes = EscodeReader_read(buf, ESHEAD_GETWIDTH(eshead));
+    bytes = EscodeReader_read(buf, ESHEAD_GETNUMWIDTH(eshead, 1));
     bool istuple = ESHEAD_DECODELEN(eshead, bytes);
     PyObject *obj;
 
@@ -83,7 +96,7 @@ decode_object(EscodeReader* buf) {
   }
 
   case ESTYPE_SET: {
-    bytes = EscodeReader_read(buf, ESHEAD_GETWIDTH(eshead));
+    bytes = EscodeReader_read(buf, ESHEAD_GETNUMWIDTH(eshead, 1));
     bool isdict = ESHEAD_DECODELEN(eshead, bytes);
     PyObject *obj;
 

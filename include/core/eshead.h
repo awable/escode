@@ -49,95 +49,114 @@ typedef struct eshead_t {
 
 
 /****************************************************************************
- * ENCODE STAGE
+ * ENCODE
  ****************************************************************************/
-
-
-#define ESHEAD_SETBOOL(eshead, type, bval)                              \
-  ({ESHEAD_SETINFO(eshead, type, !!(bval));                             \
-    (eshead)->ops |= OP_ESINDEXHEAD;                                    \
-    eshead;})
-
-
-#define ESHEAD_ENCODEINT(eshead, type, pos)                             \
-  ({_ESHEAD_ENCODENUM(eshead, type, pos);                               \
-    ESHEAD_SETINFO(eshead, type, _INTINFO(pos, (eshead)->enc.width));   \
-    (eshead)->ops |= OP_ESINDEXHEAD | OP_ESINDEXNUM;                    \
-    eshead;})
-
-#define ESHEAD_ENCODELEN(eshead, type, bit)                             \
-  ({_ESHEAD_ENCODENUM(eshead, type, 1);                                 \
-    ESHEAD_SETINFO(eshead, type, _WIDTHINFO(bit, (eshead)->enc.width)); \
-    eshead;})
-
-#define _ESHEAD_ENCODENUM(eshead, type, pos)                            \
-  ({(eshead)->enc.num.b64  = htonll((eshead)->val.u64);                 \
-    (eshead)->enc.off = _NUMOFFSET((eshead)->enc.num.bytes, pos);       \
-    (eshead)->enc.width = 8-((eshead)->enc.off);                        \
-    (eshead)->ops = OP_ESHASNUM;                                        \
-    eshead;})
-
-// Floats are similar to Sign Represented Ints with MSB sign and an abs
-// value. Reverse MSB so that +ve is 1 and -ve is 0. Flip the abs value
-// for -ve numbers because lower abs value means a higher number
-#define ESHEAD_ENCODEFLOAT(eshead, type)                                \
-  ({(eshead)->enc.num.b64 = htonll(SINT64UINT((eshead)->val.u64));      \
-    (eshead)->enc.width = sizeof(double);                               \
-    (eshead)->enc.off = 0;                                              \
-    (eshead)->ops = OP_ESHASNUM | OP_ESINDEXNUM;                        \
-    bool _pos = !((eshead)->val.u64 >> 63);                             \
-    ESHEAD_SETINFO(eshead, type, _WIDTHINFO(_pos, sizeof(double)));     \
-    eshead;})
 
 #define ESHEAD_SETINFO(eshead, type, info)                              \
   ({(eshead)->headbyte = ((byte)(((type) << 4) | ((info) & 0x0F)));     \
     eshead;})
 
-// width-1 = 0 -> 7 = 0000 -> 0111
-#define _WIDTHINFO(bit, width) (((!!(bit)) << 3) | ((width)-1))
+#define ESHEAD_SETBOOL(eshead, type, bval)                              \
+  ({ESHEAD_SETINFO(eshead, type, B(bval));                              \
+    (eshead)->ops |= OP_ESINDEXHEAD;                                    \
+    eshead;})
 
-// width-1 = 0 -> 7 = 0000 -> 0111. upper bit is 0.
-// +ve xor mask = 8-!1 = 8-0 = 8 = 1000 which keeps bottom 3, sets bit to 1
-// -ve xor mask = 8-!0 = 8-1 = 7 = 0111 which flips bottom 3, keeps bit at 0
-#define _INTINFO(pos, width) (((width)-1) ^ (0x08 - !(pos)))
+#define ESHEAD_ENCODEINT(eshead, type, pos)                             \
+  ({bool _pos = B(pos);                                                 \
+    _ESHEAD_ENCODENUM(eshead, type, _pos, _pos);                        \
+    (eshead)->ops |= OP_ESINDEXHEAD | OP_ESINDEXNUM;                    \
+    eshead;})
 
-#define _NUMOFFSET(bytes, pos)                      \
-  ({uint8_t off = 0;                                \
-    byte skip = ((byte)(0-!(pos)));                 \
-    for(;off < 7 && bytes[off] == skip; off++);     \
-    off;})
+#define ESHEAD_ENCODELEN(eshead, type, bit)                             \
+  _ESHEAD_ENCODENUM(eshead, type, B(bit), 1)
+
+// Floats are similar to Sign Represented Ints with MSB sign and an abs
+// value. Reverse MSB so that +ve is 1 and -ve is 0. Flip the abs value
+// for -ve numbers because lower abs value means a higher number
+#define ESHEAD_ENCODEFLOAT(eshead, type)                                \
+  ({bool _pos = !((eshead)->val.u64 >> 63);                             \
+    (eshead)->enc.num.b64 = htonll(SINT64UINT((eshead)->val.u64));      \
+    (eshead)->enc.width = sizeof(double);                               \
+    (eshead)->enc.off = 0;                                              \
+    (eshead)->ops = OP_ESHASNUM | OP_ESINDEXNUM;                        \
+    _ESHEAD_SETNUMINFO(eshead, type, _pos, 0, _pos);                    \
+    eshead;})
+
+#define ESHEAD_ENCODEEXP(eshead, type, pos)                             \
+  ({bool _pos = B(pos);                                                 \
+    uint64_t _repr = FLIPIF((eshead)->val.u64, !_pos);                  \
+    bool _epos = !(_repr >> 63);                                        \
+    byte _lg2width = _NUMLG2WIDTH(_repr, _epos);                        \
+    (eshead)->enc.num.b64  = htonll(_repr);                             \
+    (eshead)->enc.width = 1 << _lg2width;                               \
+    (eshead)->enc.off = 8-(eshead)->enc.width;                          \
+    _ESHEAD_SETEXPINFO(eshead, type, _pos, _epos, _lg2width);           \
+    (eshead)->ops = OP_ESHASNUM | OP_ESINDEXHEAD | OP_ESINDEXNUM;       \
+    eshead;})
+
+
+// HELPERS:These helpers assume bools have been !! converted
+
+#define _ESHEAD_ENCODENUM(eshead, type, bit, pos)                       \
+  ({(eshead)->enc.num.b64  = htonll((eshead)->val.u64);                 \
+    (eshead)->enc.off = _NUMOFFSET((eshead)->val.u64, pos);             \
+    (eshead)->enc.width = 8-((eshead)->enc.off);                        \
+    (eshead)->ops = OP_ESHASNUM;                                        \
+    _ESHEAD_SETNUMINFO(eshead, type, bit, (eshead)->enc.off, pos);      \
+    eshead;})
+
+// offset is 0->7 implying width of 8->1 bytes needed to store
+// +ve: lower offset means higher width number: flip the offset
+// -ve: lower offset means more negative i.e. lower: keep the offset
+#define _ESHEAD_SETNUMINFO(eshead, type, bit, offset, pos)              \
+  ({byte _info = ((bit << 3) | (FLIPIF(offset, pos) & 0x07));           \
+    ESHEAD_SETINFO(eshead, type, _info);})
+
+
+#define _ESHEAD_SETEXPINFO(eshead, type, pos, epos, lg2width)           \
+  ({byte _infowidth = FLIPIF(lg2width, !epos);                          \
+    byte _info = (pos << 3) | (epos << 2) | (_infowidth & 0x3);         \
+    ESHEAD_SETINFO(eshead, type, _info);})
 
 
 /****************************************************************************
- * DECODE STAGE
+ * DECODE
  ****************************************************************************/
 
 #define ESHEAD_GETBOOL(eshead) \
-  ESHEAD_GETINFO(eshead)
+  B(ESHEAD_GETINFO(eshead))
 
 #define ESHEAD_DECODEINT(eshead, bytes)                                 \
-  ({(eshead)->enc.width = ESHEAD_GETINTWIDTH(eshead);                   \
-    bool _pos = ESHEAD_GETBIT(eshead);                                  \
-    _ESHEAD_DECODENUM(eshead, bytes, _pos);                             \
-    _pos;})
+  ({bool _pos = ESHEAD_GETBIT(eshead);                                  \
+    _ESHEAD_DECODENUM(eshead, bytes, _pos);})
 
 #define ESHEAD_DECODELEN(eshead, bytes)                                 \
-  ({(eshead)->enc.width = ESHEAD_GETWIDTH(eshead);                      \
-    _ESHEAD_DECODENUM(eshead, bytes, 1);                                \
-    ESHEAD_GETBIT(eshead);})
+  _ESHEAD_DECODENUM(eshead, bytes, 1)
+
+#define ESHEAD_DECODEFLOAT(eshead, bytes)                               \
+  ({memcpy((eshead)->enc.num.bytes, bytes, sizeof(double));             \
+    (eshead)->val.u64 = UINT64SINT(ntohll((eshead)->enc.num.b64));      \
+    0;})
 
 #define _ESHEAD_DECODENUM(eshead, bytes, pos)                           \
-  ({(eshead)->enc.num.b64 = (uint64_t)((int64_t)(0-(!pos)));            \
+  ({(eshead)->enc.width = ESHEAD_GETNUMWIDTH(eshead, pos);              \
+    (eshead)->enc.num.b64 = (uint64_t)((int64_t)(0-(!pos)));            \
     (eshead)->enc.off = 8-(eshead)->enc.width;                          \
     byte* _cursor = (eshead)->enc.num.bytes + (eshead)->enc.off;        \
     memcpy(_cursor, bytes, (eshead)->enc.width);                        \
     (eshead)->val.u64 = ntohll((eshead)->enc.num.b64);                  \
     ESHEAD_GETBIT(eshead);})
 
-#define ESHEAD_DECODEFLOAT(eshead, bytes)                               \
-  ({memcpy((eshead)->enc.num.bytes, bytes, sizeof(double));             \
-    (eshead)->val.u64 = UINT64SINT(ntohll((eshead)->enc.num.b64));      \
-    0;})
+#define ESHEAD_DECODEEXP(eshead, bytes)                                 \
+  ({bool _pos = ESHEAD_GETBIT(eshead);                                  \
+    bool _epos = ESHEAD_GETEXPBIT(eshead);                              \
+    (eshead)->enc.width = ESHEAD_GETEXPWIDTH(eshead, _epos);            \
+    (eshead)->enc.off = 8-(eshead)->enc.width;                          \
+    (eshead)->enc.num.b64 = (uint64_t)((int64_t)(0-(!epos)));           \
+    byte* _cursor = (eshead)->enc.num.bytes + (eshead)->enc.off;        \
+    memcpy(_cursor, bytes, (eshead)->enc.width);                        \
+    (eshead)->val.i64 = FLIPIF(ntohll((eshead)->enc.num.b64), !_pos);   \
+    _pos;})
 
 
 // (headbyte >> 4) & 0000.1111
@@ -149,13 +168,18 @@ typedef struct eshead_t {
 // (headbyte & 0000.1000) >> 3
 #define ESHEAD_GETBIT(eshead) (((eshead)->headbyte & 0x08)>>3)
 
-// headbyte & 0000.0111
-#define ESHEAD_GETWIDTH(eshead) (((eshead)->headbyte & 0x07) + 1)
+// (headbyte & 0000.1000) >> 3
+#define ESHEAD_GETEXPBIT(eshead) (((eshead)->headbyte & 0x04)>>2)
 
-// +ve xor mask = 8-!1 = 8-0 = 8 = 1000 which keeps bottom 3
-// -ve xor mask = 8-!0 = 8-1 = 7 = 0111 which flips bottom 3
-// & 0x07 returns the bottom 3 bits which represent width
-#define ESHEAD_GETINTWIDTH(eshead)                              \
-  ((((eshead)->headbyte ^ (0x08-!ESHEAD_GETBIT(eshead))) & 0x07) + 1)
+
+// HELPERS:These helpers assume bools have been !! converted
+#define ESHEAD_GETNUMWIDTH(eshead, pos)                 \
+  ((FLIPIF((eshead)->headbyte, !pos) & 0x07) + 1)
+
+#define ESHEAD_GETEXPWIDTH(eshead, epos)                 \
+  (1 << (FLIPIF((eshead)->headbyte, !epos) & 0x03))
+
+
+
 
 #endif //__ESCODE_ESHEAD_H__
