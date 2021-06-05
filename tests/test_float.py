@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 from unittest import TestCase
 
+import sys
+import random
 import escode
 
 class TestFloat(TestCase):
@@ -18,7 +20,9 @@ class TestFloat(TestCase):
             123.123,
             123.123e-4,
             0.0,
-        ]
+            sys.float_info.max,
+            sys.float_info.min,
+        ] + [random.uniform(sys.float_info.min, sys.float_info.max) for x in range(20)]
 
 
     def test_float(self):

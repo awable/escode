@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from unittest import TestCase
 
+import sys
 import random
 import escode
 
@@ -8,7 +9,7 @@ class TestMulti(TestCase):
 
 
     def setUp(self):
-        floats = [random.uniform(0, 1000) for x in range(20)]
+        floats = [random.uniform(sys.float_info.min, sys.float_info.max) for x in range(20)]
         nums = [random.randint(-0x0fffffffffffffff, 0x0fffffffffffffff) for x in range(20)]
         hexs = [hex(random.randint(-0x0fffffffffffffff, 0x0fffffffffffffff)) for x in range(20)]
         self.tuples = zip(nums, floats, hexs)

@@ -5,6 +5,7 @@ from six.moves import xrange
 import six
 import random
 import string
+import sys
 
 def generate_tiny():
     return random.randint(-0x80,0x7F)
@@ -32,7 +33,7 @@ def generate_bool():
     return bool(random.randint(0,2))
 
 def generate_float():
-    return float(generate_long())/generate_long()
+    return random.uniform(sys.float_info.min, sys.float_info.max)
 
 basicfuncs = []
 basicfuncs.append(generate_bool)
