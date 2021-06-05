@@ -7,9 +7,6 @@
 #include "htonll.h"
 #include "intlib.h"
 
-typedef uint8_t bool;
-typedef uint8_t byte;
-
 typedef struct eshead_t {
   byte headbyte;
   byte ops;
@@ -140,7 +137,7 @@ typedef struct eshead_t {
 
 #define _ESHEAD_DECODENUM(eshead, bytes, pos)                           \
   ({(eshead)->enc.width = ESHEAD_GETNUMWIDTH(eshead, pos);              \
-    (eshead)->enc.num.b64 = (uint64_t)((int64_t)(0-(!pos)));            \
+    (eshead)->enc.num.b64 = 0-(!pos);                                   \
     (eshead)->enc.off = 8-(eshead)->enc.width;                          \
     byte* _cursor = (eshead)->enc.num.bytes + (eshead)->enc.off;        \
     memcpy(_cursor, bytes, (eshead)->enc.width);                        \
@@ -152,7 +149,7 @@ typedef struct eshead_t {
     bool _epos = ESHEAD_GETEXPBIT(eshead);                              \
     (eshead)->enc.width = ESHEAD_GETEXPWIDTH(eshead, _epos);            \
     (eshead)->enc.off = 8-(eshead)->enc.width;                          \
-    (eshead)->enc.num.b64 = (uint64_t)((int64_t)(0-(!epos)));           \
+    (eshead)->enc.num.b64 = 0-(!epos);                                  \
     byte* _cursor = (eshead)->enc.num.bytes + (eshead)->enc.off;        \
     memcpy(_cursor, bytes, (eshead)->enc.width);                        \
     (eshead)->val.i64 = FLIPIF(ntohll((eshead)->enc.num.b64), !_pos);   \

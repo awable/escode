@@ -2,8 +2,11 @@
 #define __ESCODE_CONSTANTS_H__
 
 #include <stdint.h>
+#include "intlib.h"
 
 #define ESINDEX_MAX UINT16_MAX
+#define ESINDEX_SEP ((const byte*)"\x00\x00")
+#define ESINDEX_SEPLEN (2*sizeof(byte))
 
 /*********************************************************
  * TYPES

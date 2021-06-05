@@ -76,9 +76,9 @@ typedef struct EscodeWriter {
   ((buf)->size > sizeof((buf)->_stackstr) ? (buf)->_str : (buf)->_stackstr)
 
 
-/**************************************************************
-                            READ/WRITE
-****************************************************************/
+/*************************************************************************
+ * WRITE/RESIZE
+ *************************************************************************/
 
 /**
  * Change the allocation of the buffer to the new size. The first time
@@ -91,10 +91,10 @@ typedef struct EscodeWriter {
       /* Moving from _stackstr to allocated _str */                     \
       (buf)->_str = (byte*)malloc(sizeof(byte) * _newsize);             \
       assert((buf)->_str);                                              \
-      memcpy((buf)->_str, (buf)->_stackstr, sizeof(byte) * (buf)->offset); \
+      memcpy((buf)->_str, (buf)->_stackstr, sizeof(byte)*(buf)->offset); \
     } else {                                                            \
       /* Reallocating to new size (can be smaller) */                   \
-      (buf)->_str = (byte*)realloc((buf)->_str, sizeof(byte) * _newsize); \
+      (buf)->_str = (byte*)realloc((buf)->_str, sizeof(byte)*_newsize); \
       assert((buf)->_str);                                              \
     }                                                                   \
     (buf)->size = _newsize;                                             \
@@ -120,7 +120,7 @@ typedef struct EscodeWriter {
     EscodeWriter_str(buf);})
 
 
-#define _EscodeWriter_write(buf, contents, len)                         \
+#define EscodeWriter_write(buf, contents, len)                          \
   ({if (len && contents) {                                              \
       byte* _str = _EscodeWriter_prepare(buf, len);                     \
       memcpy(_str + (buf)->offset, contents, len);                      \
@@ -138,7 +138,7 @@ typedef struct EscodeWriter {
  * sane. The string 'A\x00' will be treated equal to 'A' and the int
  * 0xFFFF0000 will be stored as '\xFF\xFF'.
  */
-#define _EscodeWriter_write_index(buf, contents, len)                   \
+#define EscodeWriter_write_index(buf, contents, len)                    \
   ({if (len && contents) {                                              \
       uint32_t _newlen = len;                                           \
                                                                         \
@@ -149,7 +149,7 @@ typedef struct EscodeWriter {
       for(uint32_t _idx = 0; _idx < _newlen; ++_idx) {                  \
         /* Keep popping till we reach a non-\x00 byte or exhaust 255 */ \
         /* \x00s. Also since all trailing \x00s were stripped, we    */ \
-        /* reach the  end of the content                             */ \
+        /* never reach the  end of the content                       */ \
         byte _x00count = 0;                                             \
         while (_x00count < UINT8_MAX && !contents[_idx]) {              \
           ++_x00count; ++_idx;                                          \
@@ -170,28 +170,24 @@ typedef struct EscodeWriter {
     1;})                                                                \
 
 
-#define EscodeWriter_write_indexsep(buf)                            \
-  ({_EscodeWriter_write(buf, (byte*)"\x00\x00", sizeof(byte)*2);})
-
-
 #define EscodeWriter_write_head(buf, eshead, esbytes, esbyteslen)       \
   ({bool index = (buf)->ops & OP_STRBUFINDEX;                           \
     if (!index || (eshead)->ops & OP_ESINDEXHEAD) {                     \
-      _EscodeWriter_write(buf, &((eshead)->headbyte), sizeof(byte));    \
+      EscodeWriter_write(buf, &((eshead)->headbyte), sizeof(byte));     \
     }                                                                   \
     if ((eshead)->ops & OP_ESHASNUM) {                                  \
       byte *_nbytes = (eshead)->enc.num.bytes + (eshead)->enc.off;      \
       if (!index) {                                                     \
-        _EscodeWriter_write(buf, _nbytes, (eshead)->enc.width);         \
+        EscodeWriter_write(buf, _nbytes, (eshead)->enc.width);          \
       } else if ((eshead)->ops & OP_ESINDEXNUM) {                       \
-        _EscodeWriter_write_index(buf, _nbytes, (eshead)->enc.width);   \
+        EscodeWriter_write_index(buf, _nbytes, (eshead)->enc.width);    \
       }                                                                 \
     }                                                                   \
     if (esbytes && esbyteslen) {                                        \
       if (index) {                                                      \
-        _EscodeWriter_write_index(buf, esbytes, esbyteslen);            \
+        EscodeWriter_write_index(buf, esbytes, esbyteslen);             \
       } else {                                                          \
-        _EscodeWriter_write(buf, esbytes, esbyteslen);                  \
+        EscodeWriter_write(buf, esbytes, esbyteslen);                   \
       }                                                                 \
     }                                                                   \
     1;})

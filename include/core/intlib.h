@@ -6,6 +6,8 @@
 #ifndef __INTLIB_H__
 #define __INTLIB_H__
 
+typedef uint8_t bool;
+typedef uint8_t byte;
 
 // Count leading 0s (1s if !pos), divide by 8 (>>3) gives us bytes to skip
 #define _NUMOFFSET(num, pos) (__builtin_clzll(FLIPIF(num, !B(pos)) | 1) >> 3)
