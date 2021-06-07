@@ -123,8 +123,21 @@ typedef struct EscodeWriter {
     EscodeWriter_str(buf);})
 
 
+
+#define EscodeWriter_write(buf, content, len)                           \
+  do {                                                                  \
+    if (len && content) {                                               \
+      if ((buf)->ops & OP_STRBUFINDEX) {                                \
+        EscodeWriter_write_index(buf, content, len);                    \
+      } else {                                                          \
+        EscodeWriter_write_raw(buf, content, len);                      \
+      }                                                                 \
+    }                                                                   \
+  } while(0)
+
+
 int
-EscodeWriter_write(EscodeWriter* buf, const byte* contents, const uint64_t len) {
+EscodeWriter_write_raw(EscodeWriter* buf, const byte* contents, const uint64_t len) {
   if (len && contents) {
       byte* _str = _EscodeWriter_prepare(buf, len);
       memcpy(_str + (buf)->offset, contents, len);
@@ -175,30 +188,6 @@ EscodeWriter_write_index(EscodeWriter* buf, const byte* contents, const uint64_t
   }
   return 1;
 }
-
-#define EscodeWriter_writeitem(buf, eshead, esbytes, esbyteslen)        \
-  ({bool index = (buf)->ops & OP_STRBUFINDEX;                           \
-    if (!index || (eshead)->ops & OP_ESINDEXHEAD) {                     \
-      EscodeWriter_write(buf, &((eshead)->headbyte), sizeof(byte));     \
-    }                                                                   \
-    if ((eshead)->ops & OP_ESHASNUM) {                                  \
-      byte *_nbytes = (eshead)->enc.num.bytes + (eshead)->enc.off;      \
-      if (!index) {                                                     \
-        EscodeWriter_write(buf, _nbytes, (eshead)->enc.width);          \
-      } else if ((eshead)->ops & OP_ESINDEXNUM) {                       \
-        EscodeWriter_write_index(buf, _nbytes, (eshead)->enc.width);    \
-      }                                                                 \
-    }                                                                   \
-    if (esbytes && esbyteslen) {                                        \
-      if (index) {                                                      \
-        EscodeWriter_write_index(buf, esbytes, esbyteslen);             \
-      } else {                                                          \
-        EscodeWriter_write(buf, esbytes, esbyteslen);                   \
-      }                                                                 \
-    }                                                                   \
-    1;})
-
-
 
 
 

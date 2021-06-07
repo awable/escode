@@ -53,8 +53,13 @@ typedef struct eshead_t {
   ({(eshead)->headbyte = ((byte)(((type) << 4) | ((info) & 0x0F)));     \
     eshead;})
 
+#define ESHEAD_SETNONE(eshead, type)                                    \
+  ({ESHEAD_SETINFO(eshead, type, 0);                                    \
+    (eshead)->ops |= OP_ESINDEXHEAD;                                    \
+    eshead;})
+
 #define ESHEAD_SETBOOL(eshead, type, bval)                              \
-  ({ESHEAD_SETINFO(eshead, type, B(bval));                              \
+  ({ESHEAD_SETINFO(eshead, type, B(bval) << 3);                         \
     (eshead)->ops |= OP_ESINDEXHEAD;                                    \
     eshead;})
 
@@ -121,7 +126,7 @@ typedef struct eshead_t {
  ****************************************************************************/
 
 #define ESHEAD_GETBOOL(eshead) \
-  B(ESHEAD_GETINFO(eshead))
+  ESHEAD_GETBIT(eshead)
 
 #define ESHEAD_DECODEINT(eshead, bytes)                                 \
   ({bool _pos = ESHEAD_GETBIT(eshead);                                  \

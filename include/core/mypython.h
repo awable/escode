@@ -36,3 +36,26 @@
   ((!strcmp(Py_TYPE(v)->tp_name, "decimal.Decimal")) || \
    !strcmp(Py_TYPE(v)->tp_name, "Decimal"))
 #endif
+
+
+typedef struct {
+  int pos;
+  int64_t exp;
+  const char* digits;
+} Decimal;
+
+#define MyPyDec_AsDecimalStruct(obj)                                    \
+  ({PyObject *_e = PyObject_CallMethod(obj, "adjusted", NULL);          \
+    PyObject *_s = PyObject_CallMethod(obj, "is_signed", NULL);         \
+    Decimal _d = {.pos=(_s==Py_False), .exp=PyLong_AsLongLong(_e)};     \
+    Py_DECREF(_e); Py_DECREF(_s);                                       \
+    _d;})
+
+#define MyPyDec_FromDecimalStruct(dec)                                  \
+  ({char _repr[50];                                                     \
+    sprintf(_repr, "%c1e%lld", (dec.pos ? '+':'-'), dec.exp);           \
+    /*printf("%s\n", repr);*/                                           \
+    PyObject* _mod = PyImport_ImportModule("decimal");                  \
+    PyObject* _obj = PyObject_CallMethod(_mod, "Decimal", "s", _repr);  \
+    Py_DECREF(_mod);                                                    \
+    _obj;})
