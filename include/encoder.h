@@ -25,7 +25,7 @@
 
 
 int
-encode_object(PyObject *object, EscodeWriter* buf) {
+encode_object(PyObject *object, ESWriter* buf) {
 
   eshead_t _eshead; // Allocate on stack
   eshead_t* eshead = &_eshead;
@@ -95,14 +95,14 @@ encode_object(PyObject *object, EscodeWriter* buf) {
 
   // Write the head byte
   if (!index || eshead->ops & OP_ESINDEXHEAD) {
-    EscodeWriter_write_raw(buf, &(eshead->headbyte), sizeof(byte));
+    ESWriter_write_raw(buf, &(eshead->headbyte), sizeof(byte));
   }
 
   // Write the head number if any
   if (eshead->ops & OP_ESHASNUM) {
     if (!index || eshead->ops & OP_ESINDEXNUM) {
       byte *nbytes = eshead->enc.num.bytes + eshead->enc.off;
-      EscodeWriter_write(buf, nbytes, eshead->enc.width);
+      ESWriter_write(buf, nbytes, eshead->enc.width);
     }
   }
 
@@ -112,10 +112,10 @@ encode_object(PyObject *object, EscodeWriter* buf) {
 
     case ESTYPE_STRING: {
       if (ESHEAD_GETBIT(eshead)) {
-        EscodeWriter_write(buf, (byte*)PyBytes_AS_STRING(repr), eshead->val.u64);
+        ESWriter_write(buf, (byte*)PyBytes_AS_STRING(repr), eshead->val.u64);
         Py_DECREF(repr);
       } else {
-        EscodeWriter_write(buf, (byte*)PyBytes_AS_STRING(object), eshead->val.u64);
+        ESWriter_write(buf, (byte*)PyBytes_AS_STRING(object), eshead->val.u64);
       }
       break;
     }

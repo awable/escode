@@ -28,16 +28,16 @@ ESCODE_encode_index(PyObject *self, PyObject *args)
   Py_ssize_t _len = PyTuple_GET_SIZE(object);
   if (!_len) Py_RETURN_NONE;
 
-  EscodeWriter buf; //Allocate on the stack
-  EscodeWriter*pbuf = &buf;
-  EscodeWriter_init(pbuf, 256);
+  ESWriter buf; //Allocate on the stack
+  ESWriter*pbuf = &buf;
+  ESWriter_init(pbuf, 256);
   buf.maxsize=ESINDEX_MAX;
   buf.ops=OP_STRBUFINDEX;
 
   for (Py_ssize_t idx = 0; idx < _len; ++idx) {
-    idx && EscodeWriter_write_raw(pbuf, ESINDEX_SEP, ESINDEX_SEPLEN);
+    idx && ESWriter_write_raw(pbuf, ESINDEX_SEP, ESINDEX_SEPLEN);
     if (!encode_object(PyTuple_GET_ITEM(object, idx), pbuf)) {
-      EscodeWriter_free(pbuf);
+      ESWriter_free(pbuf);
       if (!PyErr_Occurred()) {
         PyErr_SetString(ESCODE_EncodeError, "Error while encoding index");
       }
@@ -46,15 +46,15 @@ ESCODE_encode_index(PyObject *self, PyObject *args)
   }
 
   if (pbuf->offset && inc) {
-    byte* last = EscodeWriter_str(pbuf) + pbuf->offset - 1;
+    byte* last = ESWriter_str(pbuf) + pbuf->offset - 1;
     if (+1 == inc) {
-      (*last != 0xFF) ? ++(*last) : EscodeWriter_write_raw(pbuf, ESINDEX_SEP, ESINDEX_SEPLEN);
+      (*last != 0xFF) ? ++(*last) : ESWriter_write_raw(pbuf, ESINDEX_SEP, ESINDEX_SEPLEN);
     } else if (-1 == inc) {
       (*last != 0x00) ? --(*last) : --(pbuf->offset);
     }
   }
 
-  return EscodeWriter_finish(pbuf, PyBytes_FromStringAndSize);
+  return ESWriter_finish(pbuf, PyBytes_FromStringAndSize);
 }
 
 /* Encode object into its ESCODE representation */
@@ -63,19 +63,19 @@ static PyObject*
 ESCODE_encode(PyObject *self, PyObject *object)
 {
 
-  EscodeWriter buf; //Allocate on the stack
-  EscodeWriter*pbuf = &buf;
-  EscodeWriter_init(pbuf, 256);
+  ESWriter buf; //Allocate on the stack
+  ESWriter*pbuf = &buf;
+  ESWriter_init(pbuf, 256);
 
   if (!encode_object(object, pbuf)) {
-    EscodeWriter_free(pbuf);
+    ESWriter_free(pbuf);
     if (!PyErr_Occurred()) {
       PyErr_SetString(ESCODE_EncodeError, "Error while encoding");
     }
     return NULL;
   }
 
-  return EscodeWriter_finish(pbuf, PyBytes_FromStringAndSize);
+  return ESWriter_finish(pbuf, PyBytes_FromStringAndSize);
 }
 
 
@@ -97,7 +97,7 @@ ESCODE_decode(PyObject *self, PyObject *object)
     return NULL;
   }
 
-  EscodeReader buf = {
+  ESReader buf = {
     .str=(byte*)PyBytes_AS_STRING(object),
     .size=(uint32_t)_len,
   };
