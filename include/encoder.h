@@ -35,11 +35,11 @@ encode_object(PyObject *object, EscodeWriter* buf) {
   ESHEAD_INITENCODE(eshead);
 
   if (object == Py_None) {
-    ESHEAD_SETNONE(eshead, ESTYPE_NONE);
+    ESHEAD_ENCODENONE(eshead, ESTYPE_NONE);
   } else if (object == Py_True) {
-    ESHEAD_SETBOOL(eshead, ESTYPE_BOOL, 1);
+    ESHEAD_ENCODEBOOL(eshead, ESTYPE_BOOL, 1);
   } else if (object == Py_False) {
-    ESHEAD_SETBOOL(eshead, ESTYPE_BOOL, 0);
+    ESHEAD_ENCODEBOOL(eshead, ESTYPE_BOOL, 0);
 
   } else if (PyInt_CheckExact(object) || PyLong_CheckExact(object)) {
     int32_t ofl;
@@ -86,6 +86,7 @@ encode_object(PyObject *object, EscodeWriter* buf) {
     enc_assert_err(!index, "dict type is not index encodable")
     eshead->val.u64 = PyDict_GET_SIZE(object);
     ESHEAD_ENCODELEN(eshead, ESTYPE_SET, 1);
+
   } else {
     PyErr_SetString(ESCODE_UnsupportedError, Py_TYPE(object)->tp_name);
     return 0;

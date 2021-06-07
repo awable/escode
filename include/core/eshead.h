@@ -49,16 +49,13 @@ typedef struct eshead_t {
  * ENCODE
  ****************************************************************************/
 
-#define ESHEAD_SETINFO(eshead, type, info)                              \
-  ({(eshead)->headbyte = ((byte)(((type) << 4) | ((info) & 0x0F)));     \
-    eshead;})
 
-#define ESHEAD_SETNONE(eshead, type)                                    \
+#define ESHEAD_ENCODENONE(eshead, type)                                 \
   ({ESHEAD_SETINFO(eshead, type, 0);                                    \
     (eshead)->ops |= OP_ESINDEXHEAD;                                    \
     eshead;})
 
-#define ESHEAD_SETBOOL(eshead, type, bval)                              \
+#define ESHEAD_ENCODEBOOL(eshead, type, bval)                           \
   ({ESHEAD_SETINFO(eshead, type, B(bval) << 3);                         \
     (eshead)->ops |= OP_ESINDEXHEAD;                                    \
     eshead;})
@@ -99,12 +96,8 @@ typedef struct eshead_t {
 
 // HELPERS:These helpers assume bools have been !! converted
 
-#define _ESHEAD_ENCODENUM(eshead, type, bit, pos)                       \
-  ({(eshead)->enc.num.b64  = htonll((eshead)->val.u64);                 \
-    (eshead)->enc.off = _NUMOFFSET((eshead)->val.u64, pos);             \
-    (eshead)->enc.width = 8-((eshead)->enc.off);                        \
-    (eshead)->ops = OP_ESHASNUM;                                        \
-    _ESHEAD_SETNUMINFO(eshead, type, bit, (eshead)->enc.off, pos);      \
+#define ESHEAD_SETINFO(eshead, type, info)                              \
+  ({(eshead)->headbyte = ((byte)(((type) << 4) | ((info) & 0x0F)));     \
     eshead;})
 
 // offset is 0->7 implying width of 8->1 bytes needed to store
@@ -119,6 +112,14 @@ typedef struct eshead_t {
   ({byte _infowidth = FLIPIF(lg2width, !epos);                          \
     byte _info = (pos << 3) | (epos << 2) | (_infowidth & 0x3);         \
     ESHEAD_SETINFO(eshead, type, _info);})
+
+#define _ESHEAD_ENCODENUM(eshead, type, bit, pos)                       \
+  ({(eshead)->enc.num.b64  = htonll((eshead)->val.u64);                 \
+    (eshead)->enc.off = _NUMOFFSET((eshead)->val.u64, pos);             \
+    (eshead)->enc.width = 8-((eshead)->enc.off);                        \
+    (eshead)->ops = OP_ESHASNUM;                                        \
+    _ESHEAD_SETNUMINFO(eshead, type, bit, (eshead)->enc.off, pos);      \
+    eshead;})
 
 
 /****************************************************************************
