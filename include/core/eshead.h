@@ -74,23 +74,22 @@ typedef struct eshead_t {
 // for -ve numbers because lower abs value means a higher number
 #define ESHEAD_ENCODEFLOAT(eshead, type)                                \
   ({bool _pos = !((eshead)->val.u64 >> 63);                             \
-    (eshead)->enc.num.b64 = htonll(SINT64UINT((eshead)->val.u64));      \
     (eshead)->enc.width = sizeof(double);                               \
     (eshead)->enc.off = 0;                                              \
+    (eshead)->enc.num.b64 = htonll(SINT64UINT((eshead)->val.u64));      \
     (eshead)->ops = OP_ESHASNUM | OP_ESINDEXNUM;                        \
     _ESHEAD_SETNUMINFO(eshead, type, _pos, 0, _pos);                    \
     eshead;})
 
 #define ESHEAD_ENCODEEXP(eshead, type, pos)                             \
   ({bool _pos = B(pos);                                                 \
-    uint64_t _repr = FLIPIF((eshead)->val.u64, !_pos);                  \
-    bool _epos = !(_repr >> 63);                                        \
-    byte _lg2width = _NUMLG2WIDTH(_repr, _epos);                        \
-    (eshead)->enc.num.b64  = htonll(_repr);                             \
+    bool _epos = !((eshead)->val.u64 >> 63);                            \
+    byte _lg2width = _NUMLG2WIDTH((eshead)->val.u64, _epos);            \
     (eshead)->enc.width = 1 << _lg2width;                               \
     (eshead)->enc.off = 8-(eshead)->enc.width;                          \
-    _ESHEAD_SETEXPINFO(eshead, type, _pos, _epos, _lg2width);           \
+    (eshead)->enc.num.b64  = FLIPIF(htonll((eshead)->val.u64), !_pos);  \
     (eshead)->ops = OP_ESHASNUM | OP_ESINDEXHEAD | OP_ESINDEXNUM;       \
+    _ESHEAD_SETEXPINFO(eshead, type, _pos, _epos, _lg2width);           \
     eshead;})
 
 
@@ -109,14 +108,14 @@ typedef struct eshead_t {
 
 
 #define _ESHEAD_SETEXPINFO(eshead, type, pos, epos, lg2width)           \
-  ({byte _infowidth = FLIPIF(lg2width, !epos);                          \
-    byte _info = (pos << 3) | (epos << 2) | (_infowidth & 0x3);         \
+  ({byte _eposwidth = (epos << 2) | (FLIPIF(lg2width, !epos) & 0x03);   \
+    byte _info = (pos << 3) | (FLIPIF(_eposwidth, !pos) & 0x07);        \
     ESHEAD_SETINFO(eshead, type, _info);})
 
 #define _ESHEAD_ENCODENUM(eshead, type, bit, pos)                       \
-  ({(eshead)->enc.num.b64  = htonll((eshead)->val.u64);                 \
-    (eshead)->enc.off = _NUMOFFSET((eshead)->val.u64, pos);             \
+  ({(eshead)->enc.off = _NUMOFFSET((eshead)->val.u64, pos);             \
     (eshead)->enc.width = 8-((eshead)->enc.off);                        \
+    (eshead)->enc.num.b64  = htonll((eshead)->val.u64);                 \
     (eshead)->ops = OP_ESHASNUM;                                        \
     _ESHEAD_SETNUMINFO(eshead, type, bit, (eshead)->enc.off, pos);      \
     eshead;})
