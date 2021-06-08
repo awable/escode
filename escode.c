@@ -35,7 +35,7 @@ ESCODE_encode_index(PyObject *self, PyObject *args)
   buf.ops=OP_STRBUFINDEX;
 
   for (Py_ssize_t idx = 0; idx < _len; ++idx) {
-    idx && ESWriter_write_raw(pbuf, ESINDEX_SEP, ESINDEX_SEPLEN);
+    if (idx) { ESWriter_write_raw(pbuf, ESINDEX_SEP, ESINDEX_SEPLEN); }
     if (!encode_object(PyTuple_GET_ITEM(object, idx), pbuf)) {
       ESWriter_free(pbuf);
       if (!PyErr_Occurred()) {
@@ -46,9 +46,9 @@ ESCODE_encode_index(PyObject *self, PyObject *args)
   }
 
   if (pbuf->offset && inc) {
-    byte* last = ESWriter_str(pbuf) + pbuf->offset - 1;
+    byte* last = pbuf->_str + pbuf->offset - 1;
     if (+1 == inc) {
-      (*last != 0xFF) ? ++(*last) : ESWriter_write_raw(pbuf, ESINDEX_SEP, ESINDEX_SEPLEN);
+      ESWriter_write_raw(pbuf, (byte*)"\x00", 1);
     } else if (-1 == inc) {
       (*last != 0x00) ? --(*last) : --(pbuf->offset);
     }
