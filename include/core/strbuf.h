@@ -43,40 +43,41 @@ typedef struct ESReader {
 *************************************************************************/
 
 typedef struct ESWriter {
-  byte *_str;
   uint8_t ops;
   uint32_t offset;
   uint32_t size;
   uint32_t maxsize;
+  byte *_str;
+  byte *_heapstr;
   byte _stackstr[512];
+
 } ESWriter;
 
 #define OP_STRBUFINDEX 0x01
 
-#define ESWriter_init(buf, len)                             \
-  ({memset(buf, 0, offsetof(ESWriter, _stackstr));          \
-    (buf)->size = sizeof((buf)->_stackstr);                 \
-    (buf)->maxsize = UINT32_MAX;                            \
-                                                            \
-    if (len > (buf)->size) {                                \
-      (buf)->size = len;                                    \
-      (buf)->_str = (byte*)malloc(sizeof(byte) * len);      \
-      eswrite_assert((buf)->_str);                          \
+#define ESWriter_init(buf, len)                                         \
+  ({memset(buf, 0, offsetof(ESWriter, _stackstr));                      \
+    (buf)->size = sizeof((buf)->_stackstr);                             \
+    (buf)->maxsize = UINT32_MAX;                                        \
+    (buf)->_str = (buf)->_stackstr;                                     \
+                                                                        \
+    if (len > (buf)->size) {                                            \
+      (buf)->size = len;                                                \
+      (buf)->_str = (buf)->_heapstr = (byte*)malloc(sizeof(byte)*len);  \
+      eswrite_assert((buf)->_heapstr);                                  \
     }})
 
 #define ESWriter_free(buf)                                              \
-  if ((buf)->_str) { free((buf)->_str); (buf)->_str == NULL;}           \
+  if ((buf)->_heapstr) {                                                \
+    free((buf)->_heapstr);                                              \
+    (buf)->_heapstr = NULL;                                             \
+  }                                                                     \
 
 
 #define ESWriter_finish(buf, cb)                                        \
-  ({byte* _str = ESWriter_str(buf);                                     \
-    void* _obj = cb((char*)_str, (buf)->offset);                        \
+  ({void* _obj = cb((char*)(buf)->_str, (buf)->offset);                 \
     ESWriter_free(buf);                                                 \
     _obj;})
-
-
-#define ESWriter_str(buf)                           \
-  ((buf)->_str ? (buf)->_str : (buf)->_stackstr)
 
 
 /*************************************************************************
@@ -86,29 +87,32 @@ typedef struct ESWriter {
 /**
  * Change the allocation of the buffer to the new size. The first time
  * _ESWriter_resize is called, we move over from _stackstr to the
- * allocated _str, even if _newsize is smaller and _stackstr has room
+ *  _heapstr, even if _newsize is smaller and _stackstr has room
  */
 
-#define _ESWriter_resize(buf, _newsize)                                   \
-  ({if (!(buf)->_str) {                                                   \
-      /* Moving from _stackstr to allocated _str */                       \
-      (buf)->_str = (byte*)malloc(sizeof(byte) * _newsize);               \
-      eswrite_assert((buf)->_str);                                        \
-      memcpy((buf)->_str, (buf)->_stackstr, sizeof(byte)*(buf)->offset);  \
-    } else {                                                              \
-      /* Reallocating to new size (can be smaller) */                     \
-      (buf)->_str = (byte*)realloc((buf)->_str, sizeof(byte)*_newsize);   \
-      eswrite_assert((buf)->_str);                                        \
-    }                                                                     \
-    (buf)->size = _newsize;                                               \
-    (buf)->_str;})
+#define _ESWriter_resize(buf, _newsize)                                 \
+  do {                                                                  \
+    if (!(buf)->_heapstr) {                                             \
+      /* Moving from _stackstr to _heapstr */                           \
+      (buf)->_heapstr = (byte*)malloc(sizeof(byte) * _newsize);         \
+      eswrite_assert((buf)->_heapstr);                                  \
+      memcpy((buf)->_heapstr, (buf)->_stackstr, sizeof(byte) * (buf)->offset); \
+    } else {                                                            \
+      /* Reallocating to new size (can be smaller) */                   \
+      (buf)->_heapstr = (byte*)realloc((buf)->_heapstr, sizeof(byte) * _newsize); \
+      eswrite_assert((buf)->_heapstr);                                  \
+    }                                                                   \
+    (buf)->size = _newsize;                                             \
+    (buf)->_str = (buf)->_heapstr;                                      \
+  } while(0)
 
 /**
  * Check whether there is enough space in the buffer. If not, calculate
  * a new size based on limits defined and call _ESWriter_resize
  */
 #define _ESWriter_prepare(buf, len)                                     \
-  ({uint32_t _requiredsize = (buf)->offset + len;                       \
+  do {                                                                  \
+    uint32_t _requiredsize = (buf)->offset + len;                       \
     eswrite_assert(_requiredsize <= (buf)->maxsize);                    \
                                                                         \
     if ((buf)->size < _requiredsize) {                                  \
@@ -120,7 +124,7 @@ typedef struct ESWriter {
       }                                                                 \
       _ESWriter_resize(buf, _newsize);                                  \
     }                                                                   \
-    ESWriter_str(buf);})
+  } while(0)
 
 
 
@@ -136,15 +140,14 @@ typedef struct ESWriter {
   } while(0)
 
 
-int
-ESWriter_write_raw(ESWriter* buf, const byte* contents, const uint64_t len) {
-  if (len && contents) {
-      byte* _str = _ESWriter_prepare(buf, len);
-      memcpy(_str + (buf)->offset, contents, len);
-      (buf)->offset += len;
-  }
-  return 1;
-}
+#define ESWriter_write_raw(buf, contents, len)                          \
+  do {                                                                  \
+    if (len && contents) {                                              \
+      _ESWriter_prepare(buf, len);                                      \
+      memcpy((buf)->_str + (buf)->offset, contents, len);               \
+      (buf)->offset += len;                                             \
+    }                                                                   \
+  } while(0)
 
 
 /**
@@ -163,32 +166,29 @@ ESWriter_write_index(ESWriter* buf, const byte* contents, const uint64_t len) {
 
     /* Trailing \x00s are stripped for index writes */
     while (_newlen > 0 && !contents[_newlen-1]) {--_newlen;}
-    byte* _str = _ESWriter_prepare(buf, _newlen);
+    _ESWriter_prepare(buf, _newlen);
 
     for(uint32_t _idx = 0; _idx < _newlen; ++_idx) {
       /* Keep popping till we reach a non-\x00 byte or exhaust 255 */
       /* \x00s. Also since all trailing \x00s were stripped, we    */
       /* never reach the  end of the content                       */
       byte _x00count = 0;
-      while (_x00count < UINT8_MAX && !contents[_idx]) {
-        ++_x00count; ++_idx;
-      }
+      while (!contents[_idx] && _x00count < UINT8_MAX) { ++_x00count; ++_idx; }
 
       if (_x00count) {
-        _str = _ESWriter_prepare(buf, 2);
+        _ESWriter_prepare(buf, 2);
         _x00count = ~_x00count + 1;
-        _str[(buf)->offset++] = 0x00;
-        _str[(buf)->offset++] = _x00count;
+        (buf)->_str[(buf)->offset++] = 0x00;
+        (buf)->_str[(buf)->offset++] = _x00count;
         --_idx; /* Back to non-\x00 byte or the UINT8_MAX-th \x00*/
       } else {
-        _str = _ESWriter_prepare(buf, 1);
-        _str[(buf)->offset++] = contents[_idx];
+        _ESWriter_prepare(buf, 1);
+        (buf)->_str[(buf)->offset++] = contents[_idx];
       }
     }
+
   }
   return 1;
 }
-
-
 
 #endif //__STRBUF_H__
