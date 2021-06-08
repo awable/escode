@@ -24,6 +24,10 @@ def generate_str(minlen=1, maxlen=20):
     slen = random.randint(minlen, maxlen)
     return ''.join(random.choice(letters) for _ in xrange(slen))
 
+def generate_bin(minlen=1, maxlen=20):
+    slen = random.randint(minlen, maxlen)
+    return bytes(random.randint(0,255) for _ in xrange(slen))
+
 def generate_unicode(minlen=1, maxlen=100):
     # Create a list of unicode characters within the range 0000-D7F
     ulen = random.randint(minlen, maxlen)
@@ -43,6 +47,7 @@ basicfuncs.append(generate_int)
 basicfuncs.append(generate_long)
 basicfuncs.append(generate_float)
 basicfuncs.append(generate_str)
+basicfuncs.append(generate_bin)
 basicfuncs.append(generate_unicode)
 
 
