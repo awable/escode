@@ -163,6 +163,7 @@ int
 ESWriter_write_index(ESWriter* buf, const byte* contents, const uint64_t len) {
   if (len && contents) {
     uint32_t _newlen = len; //TODO: Downcast?
+    const byte* pending = NULL;
 
     /* Trailing \x00s are stripped for index writes */
     while (_newlen > 0 && !contents[_newlen-1]) {--_newlen;}
@@ -176,15 +177,23 @@ ESWriter_write_index(ESWriter* buf, const byte* contents, const uint64_t len) {
       while (!contents[_idx] && _x00count < UINT8_MAX) { ++_x00count; ++_idx; }
 
       if (_x00count) {
-        _ESWriter_prepare(buf, 2);
+
+        if (pending) {
+          ESWriter_write_raw(buf, pending, contents+_idx-_x00count-pending);
+          pending = NULL;
+        }
+
         _x00count = ~_x00count + 1;
         (buf)->_str[(buf)->offset++] = 0x00;
         (buf)->_str[(buf)->offset++] = _x00count;
         --_idx; /* Back to non-\x00 byte or the UINT8_MAX-th \x00*/
-      } else {
-        _ESWriter_prepare(buf, 1);
-        (buf)->_str[(buf)->offset++] = contents[_idx];
+      } else if (!pending) {
+        pending = contents + _idx;
       }
+    }
+
+    if (pending) {
+      ESWriter_write_raw(buf, pending, contents+_newlen-pending);
     }
 
   }
