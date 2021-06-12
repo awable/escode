@@ -32,6 +32,10 @@ encode_object(PyObject *object, ESWriter* buf) {
   PyObject* repr = NULL;
   bool index = (buf)->ops & OP_STRBUFINDEX;
 
+#if PY_VERSION_HEX >= 0x03030000
+  ESDecimal esdec = {};
+#endif
+
   ESHEAD_INITENCODE(eshead);
 
   if (object == Py_None) {
@@ -49,12 +53,18 @@ encode_object(PyObject *object, ESWriter* buf) {
     bool pos = (ofl || eshead->val.i64 >= 0);
     ESHEAD_ENCODEINT(eshead, ESTYPE_INT, pos);
 
+#if PY_VERSION_HEX >= 0x03030000
   } else if (PyDec_CheckExact(object)) {
-    Decimal dec = MyPyDec_AsDecimalStruct(object);
+    enc_assert(MyPyDec_AsESDecimal(object, &esdec));
     enc_assert(!PyErr_Occurred());
-    eshead->val.i64 = dec.exp;
-    ESHEAD_ENCODEEXP(eshead, ESTYPE_DEC, dec.pos);
-
+    if (esdec.ops) {
+       ESHEAD_ENCODEEXPSP(eshead, ESTYPE_DEC, !esdec.sign, esdec.ops & ESDEC_Inf);
+    } else {
+      //enc_assert_err(esdec.digits, "missing digits for non-special decimal");
+      eshead->val.i64 = esdec.exp;
+      ESHEAD_ENCODEEXP(eshead, ESTYPE_DEC, !esdec.sign);
+    }
+#endif
   } else if (PyFloat_CheckExact(object)) {
     eshead->val.flt = PyFloat_AS_DOUBLE(object);
     ESHEAD_ENCODEFLOAT(eshead, ESTYPE_FLOAT);
@@ -102,20 +112,31 @@ encode_object(PyObject *object, ESWriter* buf) {
   if (eshead->ops & OP_ESHASNUM) {
     if (!index || eshead->ops & OP_ESINDEXNUM) {
       byte *nbytes = eshead->enc.num.bytes + eshead->enc.off;
-      ESWriter_write(buf, nbytes, eshead->enc.width);
+      ESWriter_write_raw(buf, nbytes, eshead->enc.width);
     }
   }
 
 
   // Continuation
   switch(ESHEAD_GETTYPE(eshead)) {
+#if PY_VERSION_HEX >= 0x03030000
+    case ESTYPE_DEC:
+      if (esdec.data) {
+        ESWriter_write(buf, esdec.data, esdec.digits >> 1);
+        free(esdec.data);
+      }
 
+      break;
+#endif
     case ESTYPE_STRING: {
       if (ESHEAD_GETBIT(eshead)) {
         ESWriter_write(buf, (byte*)PyBytes_AS_STRING(repr), eshead->val.u64);
         Py_DECREF(repr);
       } else {
         ESWriter_write(buf, (byte*)PyBytes_AS_STRING(object), eshead->val.u64);
+      }
+      if (index) {
+        ESWriter_write_raw(buf, (byte*)"\x00\x00", 2);
       }
       break;
     }

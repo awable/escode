@@ -92,6 +92,17 @@ typedef struct eshead_t {
     _ESHEAD_SETEXPINFO(eshead, type, _pos, _epos, _lg2width);           \
     eshead;})
 
+#define ESHEAD_ENCODEEXPSP(eshead, type, pos, inf)                      \
+  ({bool _pos = B(pos);                                                 \
+    bool _epos = B(inf);                                                \
+    byte _lg2width = 3;                                                 \
+    (eshead)->enc.width = 1;                                            \
+    (eshead)->enc.off = 7;                                              \
+    (eshead)->enc.num.b64 = FLIPIF(0-_epos, !_pos);                     \
+    (eshead)->ops = OP_ESHASNUM | OP_ESINDEXHEAD | OP_ESINDEXNUM;       \
+    _ESHEAD_SETEXPINFO(eshead, type, _pos, _epos, _lg2width);           \
+    eshead;})
+
 
 // HELPERS:These helpers assume bools have been !! converted
 
@@ -152,9 +163,9 @@ typedef struct eshead_t {
 #define ESHEAD_DECODEEXP(eshead, bytes)                                 \
   ({bool _pos = ESHEAD_GETBIT(eshead);                                  \
     bool _epos = ESHEAD_GETEXPBIT(eshead);                              \
-    (eshead)->enc.width = ESHEAD_GETEXPWIDTH(eshead, _epos);            \
+    (eshead)->enc.width = ESHEAD_GETEXPWIDTH(eshead);                   \
     (eshead)->enc.off = 8-(eshead)->enc.width;                          \
-    (eshead)->enc.num.b64 = 0-(!epos);                                  \
+    (eshead)->enc.num.b64 = 0-(!_epos);                                 \
     byte* _cursor = (eshead)->enc.num.bytes + (eshead)->enc.off;        \
     memcpy(_cursor, bytes, (eshead)->enc.width);                        \
     (eshead)->val.i64 = FLIPIF(ntohll((eshead)->enc.num.b64), !_pos);   \
@@ -178,8 +189,8 @@ typedef struct eshead_t {
 #define ESHEAD_GETNUMWIDTH(eshead, pos)                 \
   ((FLIPIF((eshead)->headbyte, !pos) & 0x07) + 1)
 
-#define ESHEAD_GETEXPWIDTH(eshead, epos)                 \
-  (1 << (FLIPIF((eshead)->headbyte, !epos) & 0x03))
+#define ESHEAD_GETEXPWIDTH(eshead)                                      \
+  (1 << (FLIPIF((eshead)->headbyte, !ESHEAD_GETEXPBIT(eshead)) & 0x03))
 
 
 

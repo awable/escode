@@ -20,7 +20,8 @@
 #define ESTYPE_STRING 4  //BYTES/UNICODE
 #define ESTYPE_LIST 5    //LIST/TUPLE
 #define ESTYPE_SET 6     //SET/DICT
+#if PY_VERSION_HEX >= 0x03030000
 #define ESTYPE_DEC 7
-
+#endif
 
 #endif //__ESCODE_CONSTANTS_H__

@@ -25,24 +25,17 @@ ESCODE_encode_index(PyObject *self, PyObject *args)
     return NULL;
   }
 
-  Py_ssize_t _len = PyTuple_GET_SIZE(object);
-  if (!_len) Py_RETURN_NONE;
-
   ESWriter buf; //Allocate on the stack
   ESWriter*pbuf = &buf;
   ESWriter_init(pbuf, 256);
-  buf.maxsize=ESINDEX_MAX;
   buf.ops=OP_STRBUFINDEX;
 
-  for (Py_ssize_t idx = 0; idx < _len; ++idx) {
-    if (idx) { ESWriter_write_raw(pbuf, ESINDEX_SEP, ESINDEX_SEPLEN); }
-    if (!encode_object(PyTuple_GET_ITEM(object, idx), pbuf)) {
-      ESWriter_free(pbuf);
-      if (!PyErr_Occurred()) {
-        PyErr_SetString(ESCODE_EncodeError, "Error while encoding index");
-      }
-      return NULL;
+  if (!encode_object(object, pbuf)) {
+    ESWriter_free(pbuf);
+    if (!PyErr_Occurred()) {
+      PyErr_SetString(ESCODE_EncodeError, "Error while encoding index");
     }
+    return NULL;
   }
 
   if (pbuf->offset && inc) {

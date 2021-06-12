@@ -21,7 +21,7 @@ decode_object(ESReader* buf) {
   eshead_t* eshead = &_eshead;
   PyObject *obj = NULL;
 
-  bool headbyte = ESReader_readtype(buf, bool);
+  byte headbyte = ESReader_readtype(buf, byte);
   ESHEAD_INITDECODE(eshead, headbyte);
 
   const byte* bytes;
@@ -41,14 +41,36 @@ decode_object(ESReader* buf) {
             PyLong_FromUnsignedLongLong(eshead->val.u64) :
             PyLong_FromLongLong(eshead->val.i64));
 
+#if PY_VERSION_HEX >= 0x03030000
   case ESTYPE_DEC: {
-    Decimal dec;
-    bool epos = ESHEAD_GETEXPBIT(eshead);
-    bytes = ESReader_read(buf, ESHEAD_GETEXPWIDTH(eshead, epos));
-    dec.pos = ESHEAD_DECODEEXP(eshead, bytes);
-    dec.exp = eshead->val.i64;
-    return MyPyDec_FromDecimalStruct(dec);
+    ESDecimal esdec = {};
+    esdec.sign = !ESHEAD_GETBIT(eshead);
+    uint8_t ebit = ESHEAD_GETEXPBIT(eshead);
+    uint8_t width = ESHEAD_GETEXPWIDTH(eshead);
+    bytes = ESReader_read(buf, 1);
+
+    if (width == 0x08) {
+      if (!ebit && *bytes == 0x00) {
+        esdec.ops = esdec.sign ? ESDEC_Inf : ESDEC_Zero;
+        return MyPyDec_FromESDecimal(&esdec);
+      } else if (ebit && *bytes == 0xFF) {
+        esdec.ops = esdec.sign ? ESDEC_Zero : ESDEC_Inf;
+        return MyPyDec_FromESDecimal(&esdec);
+      }
+    }
+
+    ESReader_read(buf, width-1);
+    esdec.sign = !ESHEAD_DECODEEXP(eshead, bytes);
+    esdec.exp = eshead->val.i64;
+    esdec.digits = 2;
+
+    bytes = ESReader_read(buf, 1);
+    while (*bytes & 1) { ESReader_read(buf, 1); esdec.digits += 2; }
+    esdec.data = bytes;
+
+    return MyPyDec_FromESDecimal(&esdec);
   }
+#endif
 
   case ESTYPE_FLOAT: {
     bytes = ESReader_read(buf, sizeof(double));
