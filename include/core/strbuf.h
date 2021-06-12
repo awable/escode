@@ -30,9 +30,9 @@ typedef struct ESReader {
 
 
 #define ESReader_read(buf, len)                                     \
-  ({esread_assert(len && (buf)->size >= (buf)->offset + len);       \
+  ({esread_assert((buf)->size >= (buf)->offset + (len));            \
     const byte* _bytes = (buf)->str + (buf)->offset;                \
-    (buf)->offset += len;                                           \
+    (buf)->offset += (len);                                         \
     _bytes;})
 
 #define ESReader_readtype(buf, type)            \
@@ -61,9 +61,9 @@ typedef struct ESWriter {
     (buf)->maxsize = UINT32_MAX;                                        \
     (buf)->_str = (buf)->_stackstr;                                     \
                                                                         \
-    if (len > (buf)->size) {                                            \
-      (buf)->size = len;                                                \
-      (buf)->_str = (buf)->_heapstr = (byte*)malloc(sizeof(byte)*len);  \
+    if ((len) > (buf)->size) {                                          \
+      (buf)->size = (len);                                              \
+      (buf)->_str = (buf)->_heapstr = (byte*)malloc(sizeof(byte)*(len)); \
       eswrite_assert((buf)->_heapstr);                                  \
     }})
 
@@ -112,7 +112,7 @@ typedef struct ESWriter {
  */
 #define _ESWriter_prepare(buf, len)                                     \
   do {                                                                  \
-    uint32_t _requiredsize = (buf)->offset + len;                       \
+    uint32_t _requiredsize = (buf)->offset + (len);                     \
     eswrite_assert(_requiredsize <= (buf)->maxsize);                    \
                                                                         \
     if ((buf)->size < _requiredsize) {                                  \
@@ -142,10 +142,10 @@ typedef struct ESWriter {
 
 #define ESWriter_write_raw(buf, contents, len)                          \
   do {                                                                  \
-    if (len && contents) {                                              \
+    if ((len) && (contents)) {                                          \
       _ESWriter_prepare(buf, len);                                      \
-      memcpy((buf)->_str + (buf)->offset, contents, len);               \
-      (buf)->offset += len;                                             \
+      memcpy((buf)->_str + (buf)->offset, contents, (len));             \
+      (buf)->offset += (len);                                           \
     }                                                                   \
   } while(0)
 
