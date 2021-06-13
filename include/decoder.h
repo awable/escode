@@ -64,8 +64,8 @@ decode_object(ESReader* buf) {
     esdec.exp = eshead->val.i64;
     esdec.digits = 2;
 
-    bytes = ESReader_read(buf, 1);
-    while (*bytes & 1) { ESReader_read(buf, 1); esdec.digits += 2; }
+    // bytes = ESReader_read(buf, 1);
+    // while (*bytes & 1) { ESReader_read(buf, 1); esdec.digits += 2; }
     esdec.data = bytes;
 
     return MyPyDec_FromESDecimal(&esdec);

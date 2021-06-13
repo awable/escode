@@ -32,10 +32,6 @@ encode_object(PyObject *object, ESWriter* buf) {
   PyObject* repr = NULL;
   bool index = (buf)->ops & OP_STRBUFINDEX;
 
-#if PY_VERSION_HEX >= 0x03030000
-  ESDecimal esdec = {};
-#endif
-
   ESHEAD_INITENCODE(eshead);
 
   if (object == Py_None) {
@@ -55,14 +51,13 @@ encode_object(PyObject *object, ESWriter* buf) {
 
 #if PY_VERSION_HEX >= 0x03030000
   } else if (PyDec_CheckExact(object)) {
-    enc_assert(MyPyDec_AsESDecimal(object, &esdec));
-    enc_assert(!PyErr_Occurred());
-    if (esdec.ops) {
-       ESHEAD_ENCODEEXPSP(eshead, ESTYPE_DEC, !esdec.sign, esdec.ops & ESDEC_Inf);
+    mpd_t* mpd = MyPyDec_MPD(object);
+    if (MPD_ISSPECIAL(mpd) || MPD_ISZERO(mpd)) {
+      ESHEAD_ENCODEEXPSP(eshead, ESTYPE_DEC, MPD_ISPOS(mpd), MPD_ISINF(mpd));
     } else {
-      //enc_assert_err(esdec.digits, "missing digits for non-special decimal");
-      eshead->val.i64 = esdec.exp;
-      ESHEAD_ENCODEEXP(eshead, ESTYPE_DEC, !esdec.sign);
+      //printf("sign: %02x, exp: %lld, n: %llu, dig: %llu\n", MPD_ISPOS(mpd), MPD_EXP(mpd), MPD_DIG(mpd), MPD_MSW(mpd));
+      eshead->val.i64 = MPD_EXP(mpd);
+      ESHEAD_ENCODEEXP(eshead, ESTYPE_DEC, MPD_ISPOS(mpd));
     }
 #endif
   } else if (PyFloat_CheckExact(object)) {
@@ -119,14 +114,12 @@ encode_object(PyObject *object, ESWriter* buf) {
 
   // Continuation
   switch(ESHEAD_GETTYPE(eshead)) {
-#if PY_VERSION_HEX >= 0x03030000
-    case ESTYPE_DEC:
-      if (esdec.data) {
-        ESWriter_write(buf, esdec.data, esdec.digits >> 1);
-        free(esdec.data);
-      }
 
+#if PY_VERSION_HEX >= 0x03030000
+    case ESTYPE_DEC: {
+      mpd_t* mpd = MyPyDec_MPD(object);
       break;
+    }
 #endif
     case ESTYPE_STRING: {
       if (ESHEAD_GETBIT(eshead)) {

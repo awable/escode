@@ -36,6 +36,15 @@
 #endif
 
 
+/* mpd_t flags */
+#define MPD_POS     0
+#define MPD_NEG     1
+#define MPD_INF     2
+#define MPD_NAN     4
+#define MPD_SNAN    8
+#define MPD_SPECIAL (MPD_INF|MPD_NAN|MPD_SNAN)
+
+
 typedef uint64_t mpd_uint_t;
 typedef int64_t mpd_ssize_t;
 
@@ -59,6 +68,16 @@ typedef struct {
   mpd_uint_t data[_MyPy_DEC_MINALLOC];
 } MyPyDecObject;
 
+
+#define MyPyDec_MPD(v) (&((MyPyDecObject *)v)->dec)
+#define MPD_EXP(mpd) (((mpd)->exp + (mpd)->digits) - 1)
+#define MPD_DIG(mpd) ((mpd)->digits)
+#define MPD_MSW(mpd) ((mpd)->data[(mpd)->len-1])
+
+#define MPD_ISPOS(mpd) !((mpd)->flags & MPD_NEG)
+#define MPD_ISINF(mpd) ((mpd)->flags & MPD_INF)
+#define MPD_ISSPECIAL(mpd) ((mpd)->flags & MPD_SPECIAL)
+#define MPD_ISZERO(mpd) (!MPD_ISSPECIAL(mpd) && (MPD_MSW(mpd) == 0))
 
 
 typedef struct {
