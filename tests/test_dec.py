@@ -3,30 +3,38 @@ from __future__ import print_function
 from __future__ import division
 
 from unittest import TestCase
+from six.moves import xrange
 
 import sys
+import string
 import random
 import escode
 import decimal
 
 class TestDec(TestCase):
 
+    def _randdigits(self):
+        return ''.join(random.choice(string.digits) for _ in xrange(random.randint(2,100)))
+
     def setUp(self):
         self.decs = [
-            decimal.Decimal('%s1e%d' % (
+            decimal.Decimal('%s%se%d' % (
                 random.choice(('+','-')),
-                random.randint(decimal.MIN_EMIN, decimal.MAX_EMAX)))
+                self._randdigits(),
+                random.randint(decimal.MIN_EMIN, decimal.MAX_EMAX-100)))
             for x in range(15)]
 
         self.decs += [
-            decimal.Decimal('%s1e%d' % (
+            decimal.Decimal('%s%se%d' % (
                 random.choice(('+','-')),
+                self._randdigits(),
                 random.randint(-(1<<32), 1<<32)))
             for x in range(15)]
 
         self.decs += [
-            decimal.Decimal('%s1e%d' % (
+            decimal.Decimal('%s%se%d' % (
                 random.choice(('+','-')),
+                self._randdigits(),
                 random.randint(-500, 500)))
             for x in range(15)]
 

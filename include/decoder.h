@@ -43,34 +43,55 @@ decode_object(ESReader* buf) {
 
 #if PY_VERSION_HEX >= 0x03030000
   case ESTYPE_DEC: {
-    ESDecimal esdec = {};
-    esdec.sign = !ESHEAD_GETBIT(eshead);
-    uint8_t ebit = ESHEAD_GETEXPBIT(eshead);
-    uint8_t width = ESHEAD_GETEXPWIDTH(eshead);
     bytes = ESReader_read(buf, 1);
 
-    if (width == 0x08) {
-      if (!ebit && *bytes == 0x00) {
-        esdec.ops = esdec.sign ? ESDEC_Inf : ESDEC_Zero;
-        return MyPyDec_FromESDecimal(&esdec);
-      } else if (ebit && *bytes == 0xFF) {
-        esdec.ops = esdec.sign ? ESDEC_Zero : ESDEC_Inf;
-        return MyPyDec_FromESDecimal(&esdec);
+    // info + first byte tells us if it is 0/Inf
+    switch ((ESHEAD_GETINFO(eshead) << 8) | *bytes) {
+      case 0x000: return MyPyDec_Inf(1);
+      case 0x7FF: return MyPyDec_Zero(1);
+      case 0x800: return MyPyDec_Zero(0);
+      case 0xFFF: return MyPyDec_Inf(0);
+    }
+
+    obj = MyPyDecType_New();
+    mpd_t* mpd = MyPyDec_Get(obj);
+
+    ESReader_read(buf, ESHEAD_GETEXPWIDTH(eshead)-1);
+    mpd->flags |= !ESHEAD_DECODEEXP(eshead, bytes);
+
+    do {
+      bytes = ESReader_read(buf, 1);
+      mpd->digits += 2;
+    } while (*bytes & 1);
+
+    mpd->exp = eshead->val.i64 - mpd->digits + 1;
+    mpd->len = MPD_DIG2LEN(mpd->digits);
+    mpd_static_data_prepare(mpd, mpd->len);
+
+    mpd_uint_t mult = 1;
+    mpd_ssize_t w = 0, i = 0;
+
+    for (;i < mpd->digits; i+=2, --bytes) {
+
+      uint8_t d = (*bytes >> 1);
+      uint8_t room = MPD_RDIGITS*(w+1) - i;
+
+      if (room == 0) {
+        mpd->data[++w] = d;
+        mult = 100;
+      } else if (room == 1) {
+        mpd->data[w] += (d%10) * mult;
+        mpd->data[++w] = d/10;
+        mult = 10;
+      } else {
+        mpd->data[w] += d * mult;
+        mult *= 100;
       }
     }
 
-    ESReader_read(buf, width-1);
-    esdec.sign = !ESHEAD_DECODEEXP(eshead, bytes);
-    esdec.exp = eshead->val.i64;
-    esdec.digits = 2;
-
-    // bytes = ESReader_read(buf, 1);
-    // while (*bytes & 1) { ESReader_read(buf, 1); esdec.digits += 2; }
-    esdec.data = bytes;
-
-    return MyPyDec_FromESDecimal(&esdec);
+    return obj;
   }
-#endif
+#endif //PY_VERSION_HEX >= 0x03030000
 
   case ESTYPE_FLOAT: {
     bytes = ESReader_read(buf, sizeof(double));

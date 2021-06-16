@@ -9,6 +9,7 @@
 #include <Python.h>
 #include <datetime.h>
 #include <py3c/py3c.h>
+#include "include/core/mypython.h"
 #include "include/core/strbuf.h"
 #include "include/escode.h"
 #include "include/encoder.h"
@@ -94,7 +95,6 @@ ESCODE_decode(PyObject *self, PyObject *object)
     .str=(byte*)PyBytes_AS_STRING(object),
     .size=(uint32_t)_len,
   };
-
   return decode_object(&buf);
 }
 
@@ -129,7 +129,7 @@ MODULE_INIT_FUNC(escode)
 
   if (m == NULL) return NULL;
 
-  PyDateTime_IMPORT;
+  INIT_MYPYTHON();
 
   ESCODE_Error = PyErr_NewException("on.Error", NULL, NULL);
   if (ESCODE_Error == NULL) return NULL;

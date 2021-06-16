@@ -50,16 +50,15 @@ encode_object(PyObject *object, ESWriter* buf) {
     ESHEAD_ENCODEINT(eshead, ESTYPE_INT, pos);
 
 #if PY_VERSION_HEX >= 0x03030000
-  } else if (PyDec_CheckExact(object)) {
-    mpd_t* mpd = MyPyDec_MPD(object);
+  } else if (MyPyDec_CheckExact(object)) {
+    mpd_t* mpd = MyPyDec_Get(object);
     if (MPD_ISSPECIAL(mpd) || MPD_ISZERO(mpd)) {
       ESHEAD_ENCODEEXPSP(eshead, ESTYPE_DEC, MPD_ISPOS(mpd), MPD_ISINF(mpd));
     } else {
-      //printf("sign: %02x, exp: %lld, n: %llu, dig: %llu\n", MPD_ISPOS(mpd), MPD_EXP(mpd), MPD_DIG(mpd), MPD_MSW(mpd));
       eshead->val.i64 = MPD_EXP(mpd);
       ESHEAD_ENCODEEXP(eshead, ESTYPE_DEC, MPD_ISPOS(mpd));
     }
-#endif
+#endif //PY_VERSION_HEX >= 0x03030000
   } else if (PyFloat_CheckExact(object)) {
     eshead->val.flt = PyFloat_AS_DOUBLE(object);
     ESHEAD_ENCODEFLOAT(eshead, ESTYPE_FLOAT);
@@ -117,10 +116,17 @@ encode_object(PyObject *object, ESWriter* buf) {
 
 #if PY_VERSION_HEX >= 0x03030000
     case ESTYPE_DEC: {
-      mpd_t* mpd = MyPyDec_MPD(object);
+      mpd_t* mpd = MyPyDec_Get(object);
+      if (!MPD_ISSPECIAL(mpd) && !MPD_ISZERO(mpd)) {
+        mpd_ssize_t digits = mpd->digits - mpd_ctz(mpd);
+        mpd_ssize_t len =  (digits + (digits & 1)) >> 1;
+        ESWriter_prepare(buf, len);
+        mpd_write_base100(mpd, digits, ESWriter_cursor(buf));
+        buf->offset += len;
+      }
       break;
     }
-#endif
+#endif //PY_VERSION_HEX >= 0x03030000
     case ESTYPE_STRING: {
       if (ESHEAD_GETBIT(eshead)) {
         ESWriter_write(buf, (byte*)PyBytes_AS_STRING(repr), eshead->val.u64);
