@@ -79,6 +79,8 @@ typedef struct ESWriter {
     ESWriter_free(buf);                                                 \
     _obj;})
 
+#define ESWriter_cursor(buf) ((buf)->_str + (buf)->offset)
+
 
 /*************************************************************************
  * WRITE/RESIZE
@@ -110,7 +112,7 @@ typedef struct ESWriter {
  * Check whether there is enough space in the buffer. If not, calculate
  * a new size based on limits defined and call _ESWriter_resize
  */
-#define _ESWriter_prepare(buf, len)                                     \
+#define ESWriter_prepare(buf, len)                                      \
   do {                                                                  \
     uint32_t _requiredsize = (buf)->offset + (len);                     \
     eswrite_assert(_requiredsize <= (buf)->maxsize);                    \
@@ -140,11 +142,12 @@ typedef struct ESWriter {
   } while(0)
 
 
+
 #define ESWriter_write_raw(buf, contents, len)                          \
   do {                                                                  \
     if ((len) && (contents)) {                                          \
-      _ESWriter_prepare(buf, len);                                      \
-      memcpy((buf)->_str + (buf)->offset, contents, (len));             \
+      ESWriter_prepare(buf, len);                                       \
+      memcpy(ESWriter_cursor(buf), contents, (len));                    \
       (buf)->offset += (len);                                           \
     }                                                                   \
   } while(0)
@@ -167,7 +170,7 @@ ESWriter_write_index(ESWriter* buf, const byte* contents, const uint64_t len) {
 
     /* Trailing \x00s are stripped for index writes */
     while (_newlen > 0 && !contents[_newlen-1]) {--_newlen;}
-    _ESWriter_prepare(buf, _newlen);
+    ESWriter_prepare(buf, _newlen);
 
     for(uint32_t _idx = 0; _idx < _newlen; ++_idx) {
       /* Keep popping till we reach a non-\x00 byte or exhaust 255 */
