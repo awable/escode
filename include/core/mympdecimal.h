@@ -88,8 +88,10 @@ mpd_static_from_base100(mpd_t *mpd, const uint8_t sign, const mpd_ssize_t exp,
   if (!mpd_static_data_prepare(mpd, mpd->len)) { return 0; }
 
   uint8_t bytemask = 0-MPD_ISNEG(mpd);
-  mpd_uint_t* word = mpd->data + mpd->len - 1; *word = 0;
+  mpd_uint_t* word = mpd->data + mpd->len - 1;
   mpd_ssize_t worddigits = MPD_MSWDIG(mpd);
+
+  *word = 0; //init MSW to zero
 
   for (mpd_ssize_t idx=0; idx < mpd->digits; idx+=2, bytes++) {
 
