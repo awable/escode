@@ -119,10 +119,8 @@ encode_object(PyObject *object, ESWriter* buf) {
       mpd_t* mpd = MyPyDec_Get(object);
       if (!MPD_ISSPECIAL(mpd) && !MPD_ISZERO(mpd)) {
         mpd_ssize_t digits = mpd->digits - mpd_ctz(mpd);
-        mpd_ssize_t len =  (digits + (digits & 1)) >> 1;
-        ESWriter_prepare(buf, len);
-        mpd_write_base100(mpd, digits, ESWriter_cursor(buf));
-        buf->offset += len;
+        mpd_ssize_t len =  (digits + 1) >> 1;
+        mpd_write_base100(mpd, digits, ESWriter_alloc(buf, len));
       }
       break;
     }

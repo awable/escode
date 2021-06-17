@@ -53,43 +53,13 @@ decode_object(ESReader* buf) {
       case 0xFFF: return MyPyDec_Inf(0);
     }
 
-    obj = MyPyDecType_New();
-    mpd_t* mpd = MyPyDec_Get(obj);
-
     ESReader_read(buf, ESHEAD_GETEXPWIDTH(eshead)-1);
-    mpd->flags |= !ESHEAD_DECODEEXP(eshead, bytes);
+    uint8_t sign = !ESHEAD_DECODEEXP(eshead, bytes);
 
-    do {
-      bytes = ESReader_read(buf, 1);
-      mpd->digits += 2;
-    } while (*bytes & 1);
+    bytes = ESReader_readtill(buf, sign);
+    mpd_ssize_t len = ESReader_cursor(buf) - bytes;
 
-    mpd->exp = eshead->val.i64 - mpd->digits + 1;
-    mpd->len = MPD_DIG2LEN(mpd->digits);
-    mpd_static_data_prepare(mpd, mpd->len);
-
-    mpd_uint_t mult = 1;
-    mpd_ssize_t w = 0, i = 0;
-
-    for (;i < mpd->digits; i+=2, --bytes) {
-
-      uint8_t d = (*bytes >> 1);
-      uint8_t room = MPD_RDIGITS*(w+1) - i;
-
-      if (room == 0) {
-        mpd->data[++w] = d;
-        mult = 100;
-      } else if (room == 1) {
-        mpd->data[w] += (d%10) * mult;
-        mpd->data[++w] = d/10;
-        mult = 10;
-      } else {
-        mpd->data[w] += d * mult;
-        mult *= 100;
-      }
-    }
-
-    return obj;
+    return MyPyDec_FromBase100(sign, eshead->val.i64, bytes, len);
   }
 #endif //PY_VERSION_HEX >= 0x03030000
 

@@ -101,6 +101,25 @@ MyPyDec_Inf(const uint8_t sign) {
   MPD(dec)->flags |= !!sign | MPD_INF;
   return dec;
 }
+
+
+PyObject*
+MyPyDec_FromBase100(const uint8_t sign, const mpd_ssize_t exp,
+                    const uint8_t* bytes, const mpd_ssize_t len) {
+
+  PyObject* dec = MyPyDecType_New();
+  if (!dec) { return NULL; }
+
+  if (!mpd_static_from_base100(MPD(dec), sign, exp, bytes, len)) {
+    PyErr_NoMemory();
+    Py_DECREF(dec);
+    return NULL;
+  }
+
+  return dec;
+}
+
+
 #endif //PY_VERSION_HEX >= 0x03030000
 
 

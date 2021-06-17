@@ -53,27 +53,64 @@ typedef struct mpd_t {
 #define MPD_ISSPECIAL(mpd) ((mpd)->flags & MPD_SPECIAL)
 #define MPD_ISZERO(mpd) (!MPD_ISSPECIAL(mpd) && (MPD_MSW(mpd) == 0))
 
-#define MPD_PRINTF(mpd) \
-  printf("\nflags:%02x exp:%lld digits:%lld len:%lld alloc:%lld data[msw]:%llu\n", \
-         mpd->flags, mpd->exp, mpd->digits, mpd->len, mpd->alloc, mpd->data[mpd->len-1]);
+// #define MPD_PRINTF(mpd) \
+//   printf("\nflags:%02x exp:%lld digits:%lld len:%lld alloc:%lld data[msw]:%llu\n", \
+//          mpd->flags, mpd->exp, mpd->digits, mpd->len, mpd->alloc, mpd->data[mpd->len-1]);
 
 
 int
-mpd_static_data_prepare(mpd_t *result, mpd_ssize_t len) {
-  assert(result->flags & MPD_STATIC_DATA);
-  if (len <= result->alloc) { return 1; }
+mpd_static_data_prepare(mpd_t *mpd, const mpd_ssize_t len) {
+  assert(mpd->flags & MPD_STATIC_DATA);
+  if (len <= mpd->alloc) { return 1; }
 
-  mpd_uint_t *p = result->data;
-  result->data = malloc(len * sizeof(mpd_uint_t));
-  if (result->data == NULL) {
-    result->data = p;
-    result->exp = result->digits = result->len = 0;
+  mpd_uint_t *p = mpd->data;
+  mpd->data = malloc(len * sizeof(mpd_uint_t));
+  if (mpd->data == NULL) {
+    mpd->data = p;
+    mpd->exp = mpd->digits = mpd->len = 0;
     return 0;
   }
 
-  memcpy(result->data, p, result->alloc * sizeof(mpd_uint_t));
-  result->alloc = len;
-  result->flags &= ~MPD_DATAFLAGS;
+  memcpy(mpd->data, p, mpd->alloc * sizeof(mpd_uint_t));
+  mpd->alloc = len;
+  mpd->flags &= ~MPD_DATAFLAGS;
+  return 1;
+}
+
+int
+mpd_static_from_base100(mpd_t *mpd, const uint8_t sign, const mpd_ssize_t exp,
+                        const uint8_t* bytes, const mpd_ssize_t len) {
+
+  mpd->flags |= sign;
+  mpd->digits = len << 1;
+  mpd->exp = exp - mpd->digits + 1;
+  mpd->len = MPD_DIG2LEN(mpd->digits);
+  if (!mpd_static_data_prepare(mpd, mpd->len)) { return 0; }
+
+  uint8_t bytemask = 0-MPD_ISNEG(mpd);
+  mpd_uint_t* word = mpd->data + mpd->len - 1; *word = 0;
+  mpd_ssize_t worddigits = MPD_MSWDIG(mpd);
+
+  for (mpd_ssize_t idx=0; idx < mpd->digits; idx+=2, bytes++) {
+
+    uint8_t digit100 = (*bytes ^ bytemask) >> 1;
+
+    if (!worddigits) {
+      *(--word) = digit100;
+      worddigits = MPD_RDIGITS - 2;
+
+    } else if (worddigits == 1) {
+      *word = (*word * 10) + digit100/10;
+      *(--word) = (digit100 % 10);
+      worddigits = MPD_RDIGITS - 1;
+
+    } else {
+      *word = (*word * 100) + digit100;
+      worddigits -= 2;
+    }
+
+  }
+
   return 1;
 }
 
@@ -94,16 +131,17 @@ mpd_ctz(const mpd_t* mpd) {
 }
 
 void
-mpd_write_base100(const mpd_t* mpd, const mpd_ssize_t digits, uint8_t* buf) {
+mpd_write_base100(const mpd_t* mpd, const mpd_ssize_t digits, uint8_t* str) {
+  assert(digits <= mpd->digits);
 
-  mpd_ssize_t skipdigits = mpd->digits - digits;
-  mpd_ssize_t wordidx = skipdigits/MPD_RDIGITS;
-  mpd_uint_t word = mpd->data[wordidx] / mpd_pow10[skipdigits % MPD_RDIGITS];
-  mpd_ssize_t worddigits = MPD_IDXDIG(mpd, wordidx) - skipdigits;
+  mpd_ssize_t ignore = mpd->digits - digits;
+  mpd_ssize_t wordidx = ignore/MPD_RDIGITS;
+  mpd_uint_t word = mpd->data[wordidx] / mpd_pow10[ignore % MPD_RDIGITS];
+  mpd_ssize_t worddigits = MPD_IDXDIG(mpd, wordidx) - ignore;
+  mpd_ssize_t lastbyteidx = (digits-1) >> 1;
 
-  // Set last byte to zero since we may have an odd number of digits
-  // We wont see a lower digit, and the high digit will be added to this
-  buf[(digits-1) >> 1] = 0;
+  // set bytes to zero since we use addition to add digits
+  memset(str, 0, lastbyteidx+1);
 
   for (mpd_ssize_t idx = digits-1; idx >= 0; idx--, worddigits--) {
 
@@ -116,14 +154,18 @@ mpd_write_base100(const mpd_t* mpd, const mpd_ssize_t digits, uint8_t* buf) {
     word /= 10;
 
     if (idx & 1) {
-      buf[idx >> 1] = digit << 1;
+      str[idx >> 1] = digit << 1;
     } else {
-      buf[idx >> 1] += ((digit * 10) << 1) + 1;
+      str[idx >> 1] += ((digit * 10) << 1) + 1;
     }
   }
 
   // Remove continuation bit from last byte
-  buf[(digits-1) >> 1] ^= 1;
+  str[lastbyteidx] ^= 1;
+
+  if (MPD_ISNEG(mpd)) {
+    while(lastbyteidx >= 0) { str[lastbyteidx] = ~str[lastbyteidx]; lastbyteidx--; }
+  }
 }
 
 

@@ -28,12 +28,23 @@ typedef struct ESReader {
   const uint32_t size;
 } ESReader;
 
+#define ESReader_cursor(buf)                    \
+  ((buf)->str + (buf)->offset)
 
 #define ESReader_read(buf, len)                                     \
   ({esread_assert((buf)->size >= (buf)->offset + (len));            \
-    const byte* _bytes = (buf)->str + (buf)->offset;                \
+    const byte* _bytes = ESReader_cursor(buf);                      \
     (buf)->offset += (len);                                         \
     _bytes;})
+
+#define ESReader_readtill(buf, tbit)                                \
+  ({const byte* _bytes = ESReader_cursor(buf);                      \
+    const byte* _cursor = _bytes;                                   \
+    do {                                                            \
+      esread_assert((buf)->size >= ++((buf)->offset));              \
+    } while ((*_cursor++ & 0x1) ^ tbit);                            \
+    _bytes;})
+
 
 #define ESReader_readtype(buf, type)            \
   (*(type*)ESReader_read(buf, sizeof(type)))
@@ -141,6 +152,11 @@ typedef struct ESWriter {
     }                                                                   \
   } while(0)
 
+
+#define ESWriter_alloc(buf, len)                                        \
+  ({ESWriter_prepare(buf, len);                                         \
+    (buf)->offset += (len);                                             \
+    (ESWriter_cursor(buf) - (len));})
 
 
 #define ESWriter_write_raw(buf, contents, len)                          \
