@@ -6,14 +6,14 @@
 
 Below is the space and time performance of `escode` as compared to other major encodings. It was generally faster, and produced sizes comparable to dense formats like `cbor` or `msgpack`. The code used can be found in the [benchmark](https://github.com/awable/escode/tree/master/benchmark) directory.
 
-Method | Encode (μs) |     x | Decode (μs) |     x |   Size |     x
-     --- |    --- |   --- |    --- |   --- |    --- |   ---
-  escode |    981 |  1.00 |   2411 |  1.00 |    185 |  1.00
-  pickle |   1723 |  1.76 |   2697 |  1.12 |    233 |  1.26
-    json |   5185 |  5.28 |   7685 |  3.19 |    338 |  1.82
-    cbor |   1534 |  1.56 |   2456 |  1.02 |    180 |  0.97
-   ujson |   2017 |  2.06 |   3687 |  1.53 |    330 |  1.78
- msgpack |   1329 |  1.36 |   3086 |  1.28 |    179 |  0.97
+Method | Encode (μs) | xFaster | Decode (μs) | xFaster | Size | xSmaller
+--- |    --- |   --- |    --- |   --- |    --- |   ---
+escode | 981 | 1.00 | 2411 | 1.00 | 185 | 1.00
+pickle | 1723 | 1.76 | 2697 | 1.12 | 233 | 1.26
+json | 5185 | 5.28 | 7685 | 3.19 | 338 | 1.82
+cbor | 1534 | 1.56 | 2456 | 1.02 | 180 | 0.97
+ujson | 2017 | 2.06 | 3687 | 1.53 | 330 | 1.78
+msgpack | 1329 | 1.36 | 3086 | 1.28 | 179 | 0.97
 
 ### Installation
 
