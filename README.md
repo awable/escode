@@ -91,4 +91,4 @@ assert (sorted(indextuples, key=lambda tup_enc: tup_enc[0]) ==
 Index encodings are tricky to implement since one cannot simply concat the index tuples in order to maintain sort ordering i.e. `('a','z') < ('aa', 'z')` but `'az' > 'aaz'` This is accomplished in escode by using `'\x00\x00'` as the boundary between tuple elements, and escaping `\x00s` in the tuple elements themselves. Since elements like 8 byte zeros are fairly common, consecutive `\x00s` inside elements are compressed as an optimization.
 
 
-![Format Table](https://github.com/awable/escode/blob/master/EscodeFormat.png")
+![Format Table](https://github.com/awable/escode/blob/master/EscodeFormat.png)
