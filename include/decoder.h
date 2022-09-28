@@ -14,7 +14,7 @@
 #include "core/eshead.h"
 #include "escode.h"
 
-PyObject*
+static inline __attribute__((always_inline)) PyObject*
 decode_object(ESReader* buf) {
 
   eshead_t _eshead; // Allocate on stack

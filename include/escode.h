@@ -15,10 +15,13 @@ static PyObject *ESCODE_DecodeError;
 static PyObject *ESCODE_UnsupportedError;
 
 static PyObject*
-ESCODE_encode_index(PyObject *self, PyObject *args);
+ESCODE_encode(PyObject *self, PyObject *object);
 
 static PyObject*
-ESCODE_encode(PyObject *self, PyObject *object);
+ESCODE_decode(PyObject *self, PyObject *object);
+
+static PyObject*
+ESCODE_encode_index(PyObject *self, PyObject *args);
 
 
 #endif //__ESCODE_H__

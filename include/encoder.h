@@ -24,15 +24,15 @@
   }
 
 
-int
+static inline __attribute__((always_inline)) int
 encode_object(PyObject *object, ESWriter* buf) {
 
   eshead_t _eshead; // Allocate on stack
   eshead_t* eshead = &_eshead;
-  PyObject* repr = NULL;
-  bool index = (buf)->ops & OP_STRBUFINDEX;
-
   ESHEAD_INITENCODE(eshead);
+
+  bool index = (buf)->ops & OP_STRBUFINDEX;
+  PyObject* repr = NULL;
 
   if (object == Py_None) {
     ESHEAD_ENCODENONE(eshead, ESTYPE_NONE);
@@ -125,6 +125,7 @@ encode_object(PyObject *object, ESWriter* buf) {
       break;
     }
 #endif //PY_VERSION_HEX >= 0x03030000
+
     case ESTYPE_STRING: {
       if (ESHEAD_GETBIT(eshead)) {
         ESWriter_write(buf, (byte*)PyBytes_AS_STRING(repr), eshead->val.u64);
