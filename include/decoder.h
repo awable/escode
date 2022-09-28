@@ -86,19 +86,21 @@ decode_object(ESReader* buf) {
       obj = PyTuple_New(eshead->val.u64); assert(obj);
       for (uint64_t idx = 0; idx < eshead->val.u64; ++idx) {
         PyObject* elem = decode_object(buf);
-        if (elem == NULL || PyTuple_SET_ITEM(obj, idx, elem) < 0) {
+        if (elem == NULL) {
           Py_XDECREF(obj);
           return NULL;
         }
+        PyTuple_SET_ITEM(obj, idx, elem);
       }
     } else {
       obj = PyList_New(eshead->val.u64); assert(obj);
       for (uint64_t idx = 0; idx < eshead->val.u64; ++idx) {
         PyObject* elem = decode_object(buf);
-        if (elem == NULL || PyList_SET_ITEM(obj, idx, elem) < 0) {
+        if (elem == NULL) {
           Py_XDECREF(obj);
           return NULL;
         }
+        PyList_SET_ITEM(obj, idx, elem);
       }
     }
 

@@ -44,29 +44,32 @@ Most data retrieval for data happens via range queries which operates on data at
 Index encoding is **not decodable** as it skips some of info (like lengths for strings/collections)- it is only meant to be used to store and compare against an index of the same type.
 
 ```python
-City = namedtuple('City', ('id', 'country', 'state', 'pop'))
+City = namedtuple('City', ('id', 'name', 'country', 'pop'))
 
 citylist = [
-    City('data:city:2137:delhi',  'India', 'Delhi',       19000000),
-    City('data:city:2138:gurgaon','India', 'Haryana',      1153000),
-    City('data:city:2139:mumbai', 'India', 'Maharashtra', 12478447),
-    City('data:city:2718:sf',     'USA',   'California',     88149),
-    City('data:city:7983:denver', 'USA',   'Colorado',      600158)]
+    City('city:1', 'Delhi', 'India', 19000000),
+    City('city:2', 'Mumbai', 'India', 18000000),
+    City('city:3', 'San Francisco', 'USA', 3000000),
+    City('city:4', 'Paris', 'France', 5000000),...]
 
-INDEXID = 'index:city:cp'
+INDEX_NAME = 'index:city:country_pop'
+indextuples = []
+
 for city in citylist:
     # store data
     db.put(city.id, city)
 
     # store index
-    indextuple = (INDEXID, city.country, city.pop)
+    indextuple = (INDEX_NAME, city.country, city.pop)
+    indextuples.add(indextuple)
     index = escode.encode_index(indextuple)
     db.put(index, city.id)
 
-#retrieval: indian cities with pop > 5M
-query = escode.encode_index((INDEXID,'India',5000000))
-# assuming range uses arg1 <= val <= arg2
-cityids = db.getrange(query, query)
+
+#retrieval: Indian cities with pop between 1M and 5M
+rangestart = escode.encode_index((INDEX_NAME,'India',1000000))
+rangeend = escode.encode_index((INDEX_NAME,'India',5000000))
+cityids = db.getrange(rangestart, rangeend)
 indiancities = db.multiget(cityids)
 
 
@@ -80,10 +83,12 @@ assert (sorted(indextuples, key=lambda tup_enc: tup_enc[0]) ==
         sorted(indextuples, key=lambda tup_enc: tup_enc[1]))
 ```
 
-A quick note on implementation: Index order of tuples  can be tricky since one must maintain tuple element boundaries which compare lower than any data. i.e. `('a','z') < ('aa', 'z')` but `'az' > 'aaz'` This is accomplished in escode by using `'\x00\x00'` as the boundary, and escaping `\x00s` in the tuple elements themselves, but compressing consecutive `\x00s` to compress space usage.
 
 ### Format
 
-Regular encodings use a 1 byte `headbyte` which stores the data type and some info, followed by a variable length (upto 8 bytes) number for storing lengths or integers. Index encodings skip some of these parts and have `\x00s` escaped.
+ Encodings use a 1 byte `headbyte` which stores the data type and some info, followed by a variable length (upto 8 bytes) number. This number is used to either store integer types or lengths for collections.
 
-![Format Table](~/Documents/code/github/escode/format.png")
+Index encodings are tricky to implement since one cannot simply concat the index tuples in order to maintain sort ordering i.e. `('a','z') < ('aa', 'z')` but `'az' > 'aaz'` This is accomplished in escode by using `'\x00\x00'` as the boundary between tuple elements, and escaping `\x00s` in the tuple elements themselves. Since elements like 8 byte zeros are fairly common, consecutive `\x00s` inside elements are compressed as an optimization.
+
+
+![Format Table](https://github.com/awable/escode/blob/master/EscodeFormat.png")

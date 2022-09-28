@@ -20,8 +20,8 @@ Encoder = namedtuple(
 ENCODERS = [
     Encoder('escode', escode.encode, {}, escode.decode, {}),
     Encoder('pickle', pickle.dumps, {}, pickle.loads, {}),
-    Encoder('json', json.dumps, {}, json.loads, {}),
-    Encoder('cbor', cbor.dumps, {}, cbor.loads, {}),
-    Encoder('ujson', ujson.dumps, {}, ujson.loads, {}),
-    Encoder('msgpack', msgpack.packb, {}, msgpack.unpackb, {}),
+#    Encoder('json', json.dumps, {}, json.loads, {}),
+#    Encoder('cbor', cbor.dumps, {}, cbor.loads, {}),
+#    Encoder('ujson', ujson.dumps, {}, ujson.loads, {}),
+#    Encoder('msgpack', msgpack.packb, {}, msgpack.unpackb, {}),
 ]
