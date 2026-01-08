@@ -24,7 +24,7 @@
   }
 
 
-static inline __attribute__((always_inline)) int
+static inline int
 encode_object(PyObject *object, ESWriter* buf) {
 
   eshead_t _eshead; // Allocate on stack
@@ -162,10 +162,18 @@ encode_object(PyObject *object, ESWriter* buf) {
           enc_assert(encode_object(item, buf));
         }
       } else {
-        long hash;
-        while (_PySet_NextEntry(object, &pos, &item, &hash)) {
-          enc_assert(encode_object(item, buf));
+        PyObject *iter = PyObject_GetIter(object);
+        enc_assert(iter != NULL);
+        while ((item = PyIter_Next(iter)) != NULL) {
+          int result = encode_object(item, buf);
+          Py_DECREF(item);
+          if (!result) {
+            Py_DECREF(iter);
+            return 0;
+          }
         }
+        Py_DECREF(iter);
+        enc_assert(!PyErr_Occurred());
       }
       break;
     }

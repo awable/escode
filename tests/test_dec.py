@@ -1,11 +1,7 @@
 #!/usr/bin/env python
-from __future__ import print_function
-from __future__ import division
 
 from unittest import TestCase
-from six.moves import xrange
 
-import six
 import sys
 import string
 import random
@@ -15,11 +11,9 @@ import decimal
 class TestDec(TestCase):
 
     def _randdigits(self):
-        return ''.join(random.choice(string.digits) for _ in xrange(random.randint(2,100)))
+        return ''.join(random.choice(string.digits) for _ in range(random.randint(2,100)))
 
     def setUp(self):
-        if not six.PY3: return
-
         self.decs = [
             decimal.Decimal('%s%se%d' % (
                 random.choice(('+','-')),
@@ -47,8 +41,6 @@ class TestDec(TestCase):
             decimal.Decimal('-Infinity')]
 
     def test_dec(self):
-        if not six.PY3: return
-
         decs = self.decs;
         decs += [
             decimal.Decimal('0e100'), decimal.Decimal('0e-100'),
@@ -63,8 +55,6 @@ class TestDec(TestCase):
         self.assertEqual(decoded, self.decs)
 
     def test_index_order(self):
-        if not six.PY3: return
-
         zipped = [(d, escode.encode_index((d,))) for d in self.decs]
         numsorted = sorted(zipped, key=lambda num_enc: num_enc[0])
         encsorted = sorted(zipped, key=lambda num_enc: num_enc[1])

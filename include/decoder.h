@@ -14,7 +14,7 @@
 #include "core/eshead.h"
 #include "escode.h"
 
-static inline __attribute__((always_inline)) PyObject*
+static inline PyObject*
 decode_object(ESReader* buf) {
 
   eshead_t _eshead; // Allocate on stack
@@ -112,7 +112,7 @@ decode_object(ESReader* buf) {
     bool isdict = ESHEAD_DECODELEN(eshead, bytes);
 
     if (isdict) {
-      obj = _PyDict_NewPresized(eshead->val.u64); assert(obj);
+      obj = PyDict_New(); assert(obj);
       for (uint64_t idx = 0; idx < eshead->val.u64; ++idx) {
         PyObject* key = decode_object(buf);
         PyObject* val = decode_object(buf);
