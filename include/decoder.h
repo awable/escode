@@ -114,7 +114,7 @@ decode_object(ESReader* buf) {
     bool isdict = ESHEAD_DECODELEN(eshead, bytes);
 
     if (isdict) {
-      obj = PyDict_New();
+      obj = _PyDict_NewPresized(eshead->val.u64);
       if (obj == NULL) return NULL;
       for (uint64_t idx = 0; idx < eshead->val.u64; ++idx) {
         PyObject* key = decode_object(buf);
