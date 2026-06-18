@@ -1,7 +1,5 @@
 # coding: utf8
 #!/usr/bin/env python
-from __future__ import print_function
-from __future__ import division
 
 from unittest import TestCase
 
@@ -18,4 +16,4 @@ class TestArray(TestCase):
     def test_strings(self):
         serialized = escode.encode(self.stringdict)
         stringdict = escode.decode(serialized)
-        self.assertEquals(stringdict, self.stringdict)
+        self.assertEqual(stringdict, self.stringdict)

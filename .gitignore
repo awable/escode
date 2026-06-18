@@ -1,0 +1,21 @@
+# Build artifacts
+*.so
+*.os
+*.o
+*.pyc
+build/
+dist/
+*.egg-info/
+__pycache__/
+
+# SCons
+.sconsign.dblite
+
+# Generated metadata
+PKG-INFO
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

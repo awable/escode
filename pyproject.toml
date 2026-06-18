@@ -7,8 +7,10 @@ description = "ESCODE binary serialization"
 readme = "README.md"
 
 classifiers = [
-    "Programming Language :: Python :: 2.7",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: C"
 ]
@@ -16,7 +18,8 @@ author = "Akhil Wable"
 author_email = "akhil.wable@gmail.com"
 url = "https://github.com/awable/escode"
 license = "MIT"
-install_requires = ["six"]
+requires-python = ">=3.11"
+install_requires = []
 
 src_root = ""
 

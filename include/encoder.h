@@ -24,7 +24,7 @@
   }
 
 
-static inline __attribute__((always_inline)) int
+static inline int
 encode_object(PyObject *object, ESWriter* buf) {
 
   eshead_t _eshead; // Allocate on stack
@@ -162,7 +162,7 @@ encode_object(PyObject *object, ESWriter* buf) {
           enc_assert(encode_object(item, buf));
         }
       } else {
-        long hash;
+        Py_hash_t hash;
         while (_PySet_NextEntry(object, &pos, &item, &hash)) {
           enc_assert(encode_object(item, buf));
         }

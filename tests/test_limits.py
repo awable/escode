@@ -1,9 +1,6 @@
 #!/usr/bin/env python
-from __future__ import print_function
-from __future__ import division
 
 from unittest import TestCase
-from six.moves import xrange
 import escode
 
 

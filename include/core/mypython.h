@@ -43,9 +43,7 @@ void INIT_MYPYTHON() {
         time->tm_hour, time->tm_min, time->tm_sec, 0);})
 
 
-#ifndef PyDict_GET_SIZE
-#define PyDict_GET_SIZE(mp)  (assert(PyDict_Check(mp)),((PyDictObject *)mp)->ma_used)
-#endif
+/* PyDict_GET_SIZE is available since Python 3.3 */
 
 
 #if PY_VERSION_HEX >= 0x03030000

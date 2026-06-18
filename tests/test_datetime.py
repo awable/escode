@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-from __future__ import print_function
-from __future__ import division
 
 from datetime import datetime
 from unittest import TestCase

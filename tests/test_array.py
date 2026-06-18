@@ -1,7 +1,5 @@
 # coding: utf8
 #!/usr/bin/env python
-from __future__ import print_function
-from __future__ import division
 
 from unittest import TestCase
 
@@ -97,4 +95,4 @@ class TestArray(TestCase):
     def test_long_array(self):
         serialized = escode.encode(self.doc)
         doc2 = escode.decode(serialized)
-        self.assertEquals(self.doc, doc2)
+        self.assertEqual(self.doc, doc2)
