@@ -14,8 +14,12 @@
 #include "core/eshead.h"
 #include "escode.h"
 
+/* Forward declaration so the recursive descent below routes back through
+ * decode_object(), which guards each level against unbounded recursion. */
+static inline PyObject* decode_object(ESReader* buf);
+
 static inline PyObject*
-decode_object(ESReader* buf) {
+decode_object_body(ESReader* buf) {
 
   eshead_t _eshead; // Allocate on stack
   eshead_t* eshead = &_eshead;
@@ -82,6 +86,15 @@ decode_object(ESReader* buf) {
     bytes = ESReader_read(buf, ESHEAD_GETNUMWIDTH(eshead, 1));
     bool istuple = ESHEAD_DECODELEN(eshead, bytes);
 
+    /* Each element is >=1 byte, so a length above the bytes remaining is
+     * corrupt: this stops a tiny blob from forcing a huge PyList_New (OOM).
+     * It caps allocation at O(input); it does not vet the elements
+     * themselves, which are validated as they are decoded below. */
+    if (eshead->val.u64 > (uint64_t)(buf->size - buf->offset)) {
+      PyErr_SetString(ESCODE_DecodeError, "list length exceeds remaining input");
+      return NULL;
+    }
+
     if (istuple) {
       obj = PyTuple_New(eshead->val.u64);
       if (obj == NULL) return NULL;
@@ -112,6 +125,14 @@ decode_object(ESReader* buf) {
   case ESTYPE_SET: {
     bytes = ESReader_read(buf, ESHEAD_GETNUMWIDTH(eshead, 1));
     bool isdict = ESHEAD_DECODELEN(eshead, bytes);
+
+    /* Same O(input) allocation cap as lists (>=1 byte per item; a dict entry
+     * is >=2, so this bound is loose but safe): a length above the bytes
+     * remaining is corrupt, stopping a tiny blob from forcing a huge presize. */
+    if (eshead->val.u64 > (uint64_t)(buf->size - buf->offset)) {
+      PyErr_SetString(ESCODE_DecodeError, "set/dict length exceeds remaining input");
+      return NULL;
+    }
 
     if (isdict) {
       obj = _PyDict_NewPresized(eshead->val.u64);
@@ -144,6 +165,19 @@ decode_object(ESReader* buf) {
 
   PyErr_Format(ESCODE_DecodeError, "Unrecognized type in headbyte: %02x", headbyte);
   return NULL;
+}
+
+/* Bound recursion DEPTH (not width): a deeply nested (or attacker-crafted)
+ * blob would otherwise overflow the C stack and segfault. This turns that
+ * into a catchable RecursionError at the normal Python limit. */
+static inline PyObject*
+decode_object(ESReader* buf) {
+  if (Py_EnterRecursiveCall(" while decoding an escode object")) {
+    return NULL;
+  }
+  PyObject* result = decode_object_body(buf);
+  Py_LeaveRecursiveCall();
+  return result;
 }
 
 

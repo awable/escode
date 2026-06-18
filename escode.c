@@ -131,7 +131,7 @@ MODULE_INIT_FUNC(escode)
 
   INIT_MYPYTHON();
 
-  ESCODE_Error = PyErr_NewException("on.Error", NULL, NULL);
+  ESCODE_Error = PyErr_NewException("escode.Error", NULL, NULL);
   if (ESCODE_Error == NULL) return NULL;
   Py_INCREF(ESCODE_Error);
   PyModule_AddObject(m, "Error", ESCODE_Error);

@@ -59,3 +59,84 @@ class TestIndex00s(TestCase):
         encodings = set(escode.encode_index((n,)) for n in self.numbers)
         # trailing 0s in numbers should not result in the same encoding
         self.assertEqual(len(encodings), len(self.numbers))
+
+
+class TestIndexOrdering(TestCase):
+    """The core promise of encode_index: byte order of encodings matches
+    Python's ordering of the source tuples."""
+
+    def assertOrderPreserved(self, tuples):
+        enc = {t: escode.encode_index(t) for t in tuples}
+        self.assertEqual(
+            sorted(tuples),
+            sorted(tuples, key=lambda t: enc[t]),
+        )
+
+    def test_prefix_ordering(self):
+        # The README's headline case: a tuple sorts before its extensions,
+        # i.e. ('a',) < ('a','b'), even though concatenation alone would
+        # break this ('a'+'z' > 'aa'+'z').
+        tuples = [
+            (), (u'a',), (u'a', u'a'), (u'a', u'b'),
+            (u'aa',), (u'aa', u'b'), (u'b',),
+        ]
+        self.assertOrderPreserved(tuples)
+
+    def test_mixed_scalar_types_per_position(self):
+        # Each position holds the same type, but values span the type's range.
+        firsts = [b'', b'a', b'ab', b'b']
+        seconds = [-(1 << 40), -1, 0, 1, (1 << 40)]
+        self.assertOrderPreserved(list(itertools.product(firsts, seconds)))
+
+    def test_bool_and_none_ordering(self):
+        # None / bool are orderable against themselves under encode_index.
+        self.assertOrderPreserved([(None,), (None, 1), (None, 2)])
+        self.assertOrderPreserved([(False,), (True,)])
+
+    def test_unicode_ordering(self):
+        words = [u'', u'a', u'ab', u'b', u'ba', u'\xe9', u'\xe9a']
+        self.assertOrderPreserved([(w,) for w in words])
+
+
+class TestIndexInc(TestCase):
+    """encode_index(tuple, inc) nudges an encoding to build half-open range
+    bounds: inc=-1 yields the largest key strictly below, inc=+1 the
+    smallest key strictly above."""
+
+    SAMPLES = [
+        (0,), (1,), (-1,), (1 << 40,), (-(1 << 40),),
+        (u'',), (u'a',), (u'India', 5), (b'\x00',), (3.14,),
+    ]
+
+    def test_inc_brackets_base(self):
+        for t in self.SAMPLES:
+            lo = escode.encode_index(t, -1)
+            base = escode.encode_index(t)
+            hi = escode.encode_index(t, +1)
+            self.assertLess(lo, base, t)
+            self.assertLess(base, hi, t)
+
+    def test_inc_excludes_endpoint_in_range(self):
+        # A range [encode_index(a), encode_index(b, -1)] is half-open: it
+        # must include a's key but exclude b's key.
+        keys = sorted(self.SAMPLES, key=escode.encode_index)
+        a, b = keys[2], keys[5]
+        start = escode.encode_index(a)
+        end = escode.encode_index(b, -1)
+        ka, kb = escode.encode_index(a), escode.encode_index(b)
+        self.assertTrue(start <= ka <= end)
+        self.assertFalse(start <= kb <= end)
+
+
+class TestIndexErrors(TestCase):
+    def test_requires_tuple(self):
+        for bad in (5, u'a', [1, 2], {1: 2}):
+            with self.assertRaises(TypeError):
+                escode.encode_index(bad)
+
+    def test_unindexable_types(self):
+        # Sets and dicts have no stable ordering, so they are rejected for
+        # index encoding rather than producing a misleading key.
+        for bad in (({1, 2},), ({u'a': 1},)):
+            with self.assertRaises(escode.EncodeError):
+                escode.encode_index(bad)

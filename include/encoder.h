@@ -24,8 +24,12 @@
   }
 
 
+/* Forward declaration so the recursive descent below routes back through
+ * encode_object(), which guards each level against unbounded recursion. */
+static inline int encode_object(PyObject *object, ESWriter* buf);
+
 static inline int
-encode_object(PyObject *object, ESWriter* buf) {
+encode_object_body(PyObject *object, ESWriter* buf) {
 
   eshead_t _eshead; // Allocate on stack
   eshead_t* eshead = &_eshead;
@@ -172,6 +176,19 @@ encode_object(PyObject *object, ESWriter* buf) {
   }
 
   return 1;
+}
+
+/* Bound recursion DEPTH (not width): deep nesting or a self-referential
+ * container would otherwise overflow the C stack and segfault. This turns
+ * that into a catchable RecursionError at the normal Python limit. */
+static inline int
+encode_object(PyObject *object, ESWriter* buf) {
+  if (Py_EnterRecursiveCall(" while encoding an escode object")) {
+    return 0;
+  }
+  int result = encode_object_body(object, buf);
+  Py_LeaveRecursiveCall();
+  return result;
 }
 
 
