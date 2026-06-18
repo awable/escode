@@ -178,9 +178,9 @@ encode_object_body(PyObject *object, ESWriter* buf) {
   return 1;
 }
 
-/* Guard against unbounded C recursion: deeply nested or self-referential
- * containers would otherwise overflow the stack and crash the interpreter.
- * Py_EnterRecursiveCall raises RecursionError past the configured limit. */
+/* Bound recursion DEPTH (not width): deep nesting or a self-referential
+ * container would otherwise overflow the C stack and segfault. This turns
+ * that into a catchable RecursionError at the normal Python limit. */
 static inline int
 encode_object(PyObject *object, ESWriter* buf) {
   if (Py_EnterRecursiveCall(" while encoding an escode object")) {

@@ -86,9 +86,10 @@ decode_object_body(ESReader* buf) {
     bytes = ESReader_read(buf, ESHEAD_GETNUMWIDTH(eshead, 1));
     bool istuple = ESHEAD_DECODELEN(eshead, bytes);
 
-    /* Every element occupies at least one byte, so a declared length that
-     * exceeds the bytes remaining is corrupt. Reject before allocating to
-     * avoid a huge allocation (OOM) driven by untrusted/corrupt input. */
+    /* Each element is >=1 byte, so a length above the bytes remaining is
+     * corrupt: this stops a tiny blob from forcing a huge PyList_New (OOM).
+     * It caps allocation at O(input); it does not vet the elements
+     * themselves, which are validated as they are decoded below. */
     if (eshead->val.u64 > (uint64_t)(buf->size - buf->offset)) {
       PyErr_SetString(ESCODE_DecodeError, "list length exceeds remaining input");
       return NULL;
@@ -125,9 +126,9 @@ decode_object_body(ESReader* buf) {
     bytes = ESReader_read(buf, ESHEAD_GETNUMWIDTH(eshead, 1));
     bool isdict = ESHEAD_DECODELEN(eshead, bytes);
 
-    /* A set needs >=1 byte per item and a dict >=2 bytes per entry, so a
-     * declared length above the remaining byte count is corrupt. Reject
-     * before presizing to avoid an OOM driven by corrupt input. */
+    /* Same O(input) allocation cap as lists (>=1 byte per item; a dict entry
+     * is >=2, so this bound is loose but safe): a length above the bytes
+     * remaining is corrupt, stopping a tiny blob from forcing a huge presize. */
     if (eshead->val.u64 > (uint64_t)(buf->size - buf->offset)) {
       PyErr_SetString(ESCODE_DecodeError, "set/dict length exceeds remaining input");
       return NULL;
@@ -166,9 +167,9 @@ decode_object_body(ESReader* buf) {
   return NULL;
 }
 
-/* Guard against unbounded C recursion: a deeply nested (or maliciously
- * crafted) blob would otherwise overflow the stack and crash the
- * interpreter. Py_EnterRecursiveCall raises RecursionError past the limit. */
+/* Bound recursion DEPTH (not width): a deeply nested (or attacker-crafted)
+ * blob would otherwise overflow the C stack and segfault. This turns that
+ * into a catchable RecursionError at the normal Python limit. */
 static inline PyObject*
 decode_object(ESReader* buf) {
   if (Py_EnterRecursiveCall(" while decoding an escode object")) {
