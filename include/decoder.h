@@ -83,21 +83,23 @@ decode_object(ESReader* buf) {
     bool istuple = ESHEAD_DECODELEN(eshead, bytes);
 
     if (istuple) {
-      obj = PyTuple_New(eshead->val.u64); assert(obj);
+      obj = PyTuple_New(eshead->val.u64);
+      if (obj == NULL) return NULL;
       for (uint64_t idx = 0; idx < eshead->val.u64; ++idx) {
         PyObject* elem = decode_object(buf);
         if (elem == NULL) {
-          Py_XDECREF(obj);
+          Py_DECREF(obj);
           return NULL;
         }
         PyTuple_SET_ITEM(obj, idx, elem);
       }
     } else {
-      obj = PyList_New(eshead->val.u64); assert(obj);
+      obj = PyList_New(eshead->val.u64);
+      if (obj == NULL) return NULL;
       for (uint64_t idx = 0; idx < eshead->val.u64; ++idx) {
         PyObject* elem = decode_object(buf);
         if (elem == NULL) {
-          Py_XDECREF(obj);
+          Py_DECREF(obj);
           return NULL;
         }
         PyList_SET_ITEM(obj, idx, elem);
@@ -112,7 +114,8 @@ decode_object(ESReader* buf) {
     bool isdict = ESHEAD_DECODELEN(eshead, bytes);
 
     if (isdict) {
-      obj = PyDict_New(); assert(obj);
+      obj = PyDict_New();
+      if (obj == NULL) return NULL;
       for (uint64_t idx = 0; idx < eshead->val.u64; ++idx) {
         PyObject* key = decode_object(buf);
         PyObject* val = decode_object(buf);
@@ -123,7 +126,8 @@ decode_object(ESReader* buf) {
         Py_DECREF(key);Py_DECREF(val);
       }
     } else {
-      obj = PySet_New(NULL); assert(obj);
+      obj = PySet_New(NULL);
+      if (obj == NULL) return NULL;
       for (uint64_t idx = 0; idx < eshead->val.u64; ++idx) {
         PyObject* item = decode_object(buf);
         if (item == NULL || PySet_Add(obj, item) < 0) {

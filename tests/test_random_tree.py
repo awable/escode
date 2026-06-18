@@ -65,4 +65,4 @@ class TestRandomTree(TestCase):
             populate(p, 256, 4)
             sp = escode.encode(p)
             p2 = escode.decode(sp)
-            self.assertEquals(p, p2)
+            self.assertEqual(p, p2)

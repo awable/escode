@@ -13,7 +13,7 @@ class TestMulti(TestCase):
         floats = [random.uniform(sys.float_info.min, sys.float_info.max) for x in range(20)]
         nums = [random.randint(-0x0fffffffffffffff, 0x0fffffffffffffff) for x in range(20)]
         hexs = [hex(random.randint(-0x0fffffffffffffff, 0x0fffffffffffffff)) for x in range(20)]
-        self.tuples = zip(nums, floats, hexs)
+        self.tuples = list(zip(nums, floats, hexs))
         self.lists = [list(t) for t in self.tuples]
         self.dicts = dict(zip(hexs, self.lists))
 

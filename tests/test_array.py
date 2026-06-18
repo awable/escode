@@ -95,4 +95,4 @@ class TestArray(TestCase):
     def test_long_array(self):
         serialized = escode.encode(self.doc)
         doc2 = escode.decode(serialized)
-        self.assertEquals(self.doc, doc2)
+        self.assertEqual(self.doc, doc2)

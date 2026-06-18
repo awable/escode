@@ -16,4 +16,4 @@ class TestArray(TestCase):
     def test_strings(self):
         serialized = escode.encode(self.stringdict)
         stringdict = escode.decode(serialized)
-        self.assertEquals(stringdict, self.stringdict)
+        self.assertEqual(stringdict, self.stringdict)
